@@ -7,6 +7,11 @@
     <title>Pong de 2</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Pong de 2">
 </head>
 
 <body>
@@ -144,6 +149,15 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="game.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('Service Worker registrado!'))
+                    .catch(err => console.log('Erro ao registrar SW:', err));
+            });
+        }
+    </script>
 </body>
 
 </html>
