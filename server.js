@@ -67,7 +67,36 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log('user disconnected', socket.id);
-        // Cleanup logic would go here
+
+        // Find which game this player was in
+        let targetRoomId = null;
+
+        for (const [roomId, game] of Object.entries(games)) {
+            if (game.players[socket.id]) {
+                targetRoomId = roomId;
+                // Remove player
+                delete game.players[socket.id];
+
+                // If game was playing or waiting, notify other player
+                // Actually, if it was 'playing', the game is now broken.
+                // If 'waiting', the room is just empty or has 1 player left.
+
+                // Broadcast to room
+                io.to(roomId).emit('player_disconnected');
+
+                // Cleanup if room empty
+                if (Object.keys(game.players).length === 0) {
+                    delete games[roomId];
+                } else {
+                    // Reset game status if it was playing, so remaining player goes back to waiting?
+                    // Or just let client handle the 'player_disconnected' event to reset local state.
+                    game.status = 'waiting';
+                    // Also delete the game/room because we want to force a full reset for simplicity per user request
+                    delete games[roomId];
+                }
+                break;
+            }
+        }
     });
 });
 

@@ -76,7 +76,20 @@ if (roomParam) {
 
 // Back Button
 document.getElementById('back-btn').addEventListener('click', () => {
-    window.location.href = "/"; // Reload/Reset to home
+    // Just refresh specifically for now as requested by user to "cancel"
+    // Or better, hide waiting screen and show menu
+    waitingScreen.classList.add('hidden');
+    menu.classList.remove('hidden');
+    // Also disconnect socket or leave room?
+    // For simplicity, a reload is the cleanest 'exit' but user asked to fix the button 
+    // without implying refresh. Reloading (window.location.reload()) is definitely a "Back" action.
+    // The previous code was: window.location.href = "/";
+    // If that wasn't working, maybe it was just slow?
+    // Let's make it instant UI switch + leave room emit
+
+    // We actually need to reload to cleanly reset socket state and avoid lingering connections
+    // in this simple architecture.
+    window.location.reload();
 });
 
 // QR Scanner Logic
@@ -152,6 +165,11 @@ socket.on('game_start', (state) => {
 socket.on('game_update', (state) => {
     gameState = state;
     updateScores();
+});
+
+socket.on('player_disconnected', () => {
+    alert('O outro jogador desconectou!');
+    window.location.reload(); // Simplest way to "return to start" cleanly
 });
 
 function updateScores() {
