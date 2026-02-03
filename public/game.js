@@ -145,7 +145,61 @@ scanBtn.addEventListener('click', () => {
         (errorMessage) => {
             // Quietly ignore parse errors
         }
-    ).catch(err => {
+    ).then(() => {
+        // Apply Initial Zoom (if supported)
+        try {
+            const capabilities = html5QrCode.getRunningTrackCapabilities();
+            if (capabilities.zoom) {
+                const min = capabilities.zoom.min;
+                const max = capabilities.zoom.max;
+                // Apply a moderate zoom (25% of the range or 2x if possible)
+                const targetZoom = Math.min(max, min + (max - min) * 0.25);
+                html5QrCode.applyVideoConstraints({
+                    advanced: [{ zoom: targetZoom }]
+                });
+                console.log("Initial zoom applied:", targetZoom);
+            }
+        } catch (e) {
+            console.warn("Zoom capability check failed:", e);
+        }
+
+        // Tap to Focus logic
+        const readerElem = document.getElementById('reader');
+        readerElem.style.cursor = 'crosshair';
+        readerElem.onclick = () => {
+            try {
+                const capabilities = html5QrCode.getRunningTrackCapabilities();
+                const settings = { advanced: [] };
+
+                // Many browsers trigger autofocus when constraints are re-applied
+                // We attempt to set focusMode to continuous or single-shot
+                if (capabilities.focusMode) {
+                    if (capabilities.focusMode.includes('continuous')) {
+                        settings.advanced.push({ focusMode: 'continuous' });
+                    } else if (capabilities.focusMode.includes('single-shot')) {
+                        settings.advanced.push({ focusMode: 'single-shot' });
+                    }
+                }
+
+                // If zoom is supported, keep the current zoom in the constraints
+                const currentSettings = html5QrCode.getRunningTrackSettings();
+                if (currentSettings.zoom) {
+                    settings.advanced.push({ zoom: currentSettings.zoom });
+                }
+
+                html5QrCode.applyVideoConstraints(settings);
+
+                // Visual feedback for focus
+                const overlay = document.querySelector('.scanner-overlay');
+                overlay.style.borderColor = 'rgba(255,255,255,0.8)';
+                setTimeout(() => overlay.style.borderColor = '', 200);
+
+                console.log("Focus triggered by tap");
+            } catch (e) {
+                console.warn("Focus trigger failed:", e);
+            }
+        };
+    }).catch(err => {
         console.error("Camera error:", err);
         alert("Erro na câmera: Certifique-se de dar permissão ou tente usar outro navegador.");
         stopScanner();
