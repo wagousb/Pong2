@@ -181,8 +181,8 @@ function startGameLoop(roomId) {
             const p2Id = Object.keys(game.players).find(id => game.players[id].side === 'top');
             if (p2Id) game.players[p2Id].score += 1;
 
-            // P2 Scored -> Serve towards P1 (Down, dy < 0)
-            resetBall(game, -1);
+            // P2 Scored -> Serve towards P2 (Up, dy > 0)
+            resetBall(game, 1);
             speedMultiplier = 1.0;
             lastSpeedUpdate = Date.now();
         } else if (game.ball.y > COURT_HEIGHT + 10) {
@@ -190,8 +190,8 @@ function startGameLoop(roomId) {
             const p1Id = Object.keys(game.players).find(id => game.players[id].side === 'bottom');
             if (p1Id) game.players[p1Id].score += 1;
 
-            // P1 Scored -> Serve towards P2 (Up, dy > 0)
-            resetBall(game, 1);
+            // P1 Scored -> Serve towards P1 (Down, dy < 0)
+            resetBall(game, -1);
             speedMultiplier = 1.0;
             lastSpeedUpdate = Date.now();
         }
