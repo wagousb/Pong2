@@ -95,11 +95,11 @@ body {
 }
 
 h1 {
-    font-size: 4rem;
+    font-size: 3rem;
     margin: 0;
-    line-height: 1;
+    line-height: 1.2;
     font-family: 'Press Start 2P', cursive;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
     position: relative;
     display: inline-block;
     /* Needed for ::after positioning relative to text width */
