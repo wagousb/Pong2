@@ -297,33 +297,8 @@ function render() {
         const y = ballPos.y;
         const r = radius;
 
-        // Draw the "Stepped/Pixelated" shape matching the CSS clip-path:
-        // polygon(0% 15%, 15% 15%, 15% 0%, 85% 0%, 85% 15%, 100% 15%, 
-        //         100% 85%, 85% 85%, 85% 100%, 15% 100%, 15% 85%, 0% 85%)
-
-        ctx.beginPath();
-        // Top-left corner indent
-        ctx.moveTo(x - r, y - r * 0.7);
-        ctx.lineTo(x - r * 0.7, y - r * 0.7);
-        ctx.lineTo(x - r * 0.7, y - r);
-
-        // Top-right corner indent
-        ctx.lineTo(x + r * 0.7, y - r);
-        ctx.lineTo(x + r * 0.7, y - r * 0.7);
-        ctx.lineTo(x + r, y - r * 0.7);
-
-        // Bottom-right corner indent
-        ctx.lineTo(x + r, y + r * 0.7);
-        ctx.lineTo(x + r * 0.7, y + r * 0.7);
-        ctx.lineTo(x + r * 0.7, y + r);
-
-        // Bottom-left corner indent
-        ctx.lineTo(x - r * 0.7, y + r);
-        ctx.lineTo(x - r * 0.7, y + r * 0.7);
-        ctx.lineTo(x - r, y + r * 0.7);
-
-        ctx.closePath();
-        ctx.fill();
+        // Draw a simple square ball
+        ctx.fillRect(x - r, y - r, r * 2, r * 2);
     }
 
     // Draw Paddles
