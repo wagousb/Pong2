@@ -75,25 +75,31 @@ if (roomParam) {
 }
 
 // Back Button
-// Back Button
-document.getElementById('back-btn').addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation(); 
-    console.log("Back button clicked!");
+const backBtn = document.getElementById('back-btn');
+function handleBack(e) {
+    e.preventDefault(); // Prevents ghost clicks and default behavior
+    e.stopPropagation();
+    console.log("Back button activated!");
 
-    // Soft Reset
+    // Soft Reset UI
     waitingScreen.classList.add('hidden');
-    menu.classList.remove('hidden');
-    
-    // Clear State
+    menu.classList.remove('hidden'); // Show menu immediately
+
+    // Clear Local State
     roomId = null;
     gameState = null;
     mySide = null;
-    
-    // Restart Socket to ensure server state is cleared for this user
-    socket.disconnect();
-    socket.connect();
-});
+
+    // Reset Socket
+    // Use a short timeout to ensure the UI update renders before any potential socket lag
+    setTimeout(() => {
+        socket.disconnect();
+        socket.connect();
+    }, 50);
+}
+
+backBtn.addEventListener('click', handleBack);
+backBtn.addEventListener('touchstart', handleBack, { passive: false });
 
 // QR Scanner Logic
 const scanBtn = document.getElementById('scan-btn');
