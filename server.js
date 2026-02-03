@@ -203,20 +203,17 @@ function startGameLoop(roomId) {
 
 function resetBall(game, serveDirection) {
     game.ball.x = 50;
+    game.ball.y = 100; // Always start from the middle
 
-    // Serve towards the loser (if P1 scored, serveDirection=1, towards P2)
-    // Randomize X slightly
+    // Randomize X velocity slightly
     game.ball.dx = (Math.random() > 0.5 ? 1 : -1) * 0.5;
 
-    // Use serves direction. If undefined (start of game), random.
+    // Use serveDirection to determine Y velocity (up or down)
     if (serveDirection) {
         game.ball.dy = serveDirection * 0.5;
-        // If serveDirection is 1 (Moving Up), it's P1's serve -> Start at Bottom (25)
-        // If serveDirection is -1 (Moving Down), it's P2's serve -> Start at Top (175)
-        game.ball.y = serveDirection === 1 ? 25 : 175;
     } else {
+        // Random direction if no serveDirection provided (e.g. game start)
         game.ball.dy = (Math.random() > 0.5 ? 1 : -1) * 0.5;
-        game.ball.y = 100; // Center if random/start
     }
 }
 
