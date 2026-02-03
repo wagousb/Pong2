@@ -12,6 +12,13 @@ const displayRoomCode = document.getElementById('display-room-code');
 const scoreElem = document.getElementById('my-score');
 const soloBtn = document.getElementById('solo-btn');
 
+// Remote Waiting Elements
+const remoteWaitingScreen = document.getElementById('remote-waiting-screen');
+const remoteRoomName = document.getElementById('remote-room-name');
+const remoteRoomCode = document.getElementById('remote-room-code');
+const copyCodeBtn = document.getElementById('copy-code-btn');
+const remoteBackBtn = document.getElementById('remote-back-btn');
+
 let mySide = null; // 'bottom' or 'top'
 let roomId = null;
 let gameState = null;
@@ -20,6 +27,7 @@ let lastBallDy = 0;
 let lastP1Score = 0;
 let lastP2Score = 0;
 let isSoloMode = false;
+let isRemoteMode = false; // New flag for full-court view
 let soloInterval = null;
 
 // Audio System (8-bit style)
@@ -62,16 +70,52 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
+const customRoomNameInput = document.getElementById('custom-room-name');
+const roomsList = document.getElementById('rooms-list');
+const roomsListContainer = document.getElementById('rooms-list-container');
+
 // UI Handlers
 createBtn.addEventListener('click', () => {
-    socket.emit('create_game');
+    const roomName = customRoomNameInput.value.trim();
+    const mode = document.querySelector('input[name="game-mode"]:checked').value;
+
+    // FORÇAR MODO REMOTO NA VARIÁVEL LOCAL
+    isRemoteMode = (mode === 'remote');
+    console.log("BOTÃO CRIAR CLICADO. MODO ESCOLHIDO:", mode);
+
+    socket.emit('create_game', { roomName, mode });
 });
 
 joinBtn.addEventListener('click', () => {
     const code = roomInput.value.trim();
     if (code) {
+        isRemoteMode = true; // Joining via code is remote mode
         socket.emit('join_game', code);
     }
+});
+
+socket.on('rooms_update', (rooms) => {
+    if (rooms.length === 0) {
+        roomsListContainer.classList.add('hidden');
+        return;
+    }
+
+    roomsListContainer.classList.remove('hidden');
+    roomsList.innerHTML = '';
+
+    rooms.forEach(room => {
+        const roomElem = document.createElement('div');
+        roomElem.className = 'room-item';
+        roomElem.innerHTML = `
+            <span class="room-name">${room.name}</span>
+            <span class="room-status">ENTRAR</span>
+        `;
+        roomElem.addEventListener('click', () => {
+            isRemoteMode = true; // Joining via list is remote mode
+            socket.emit('join_game', room.id);
+        });
+        roomsList.appendChild(roomElem);
+    });
 });
 
 soloBtn.addEventListener('click', (e) => {
@@ -188,32 +232,44 @@ function startSoloLoop() {
 socket.on('game_created', (data) => {
     roomId = data.roomId;
     mySide = data.side;
+    isRemoteMode = (data.mode === 'remote');
+    console.log("Room created! Mode:", data.mode);
 
-    // Show waiting screen
     menu.classList.add('hidden');
-    waitingScreen.classList.remove('hidden');
-    displayRoomCode.innerText = roomId;
 
-    // Generate QR Code
-    const joinUrl = `${window.location.protocol}//${window.location.host}/?room=${roomId}`;
-    document.getElementById('qrcode').innerHTML = ""; // Clear previous
-    new QRCode(document.getElementById("qrcode"), {
-        text: joinUrl,
-        width: 128,
-        height: 128,
-        colorDark: "#000000",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.L
-    });
+    if (isRemoteMode) {
+        // Show Remote Waiting Screen
+        remoteWaitingScreen.classList.remove('hidden');
+        remoteRoomName.innerText = data.roomName || "SALA SEM NOME";
+        remoteRoomCode.innerText = roomId;
+    } else {
+        // Show Nearby Waiting Screen
+        waitingScreen.classList.remove('hidden');
+        displayRoomCode.innerText = roomId;
+
+        // Generate QR Code for nearby mode
+        const joinUrl = `${window.location.protocol}//${window.location.host}/?room=${roomId}`;
+        document.getElementById('qrcode').innerHTML = ""; // Clear previous
+        new QRCode(document.getElementById("qrcode"), {
+            text: joinUrl,
+            width: 128,
+            height: 128,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.L
+        });
+    }
 });
 
 socket.on('game_joined', (data) => {
     roomId = data.roomId;
     mySide = data.side;
+    isRemoteMode = (data.mode === 'remote');
 
     // Start immediately
     menu.classList.add('hidden');
     waitingScreen.classList.add('hidden');
+    remoteWaitingScreen.classList.add('hidden');
 });
 
 // Auto-Join if room param exists
@@ -224,16 +280,20 @@ if (roomParam) {
     socket.emit('join_game', roomParam);
 }
 
-// Back Button
+// Back Buttons
 const backBtn = document.getElementById('back-btn');
+
 function handleBack(e) {
-    e.preventDefault(); // Prevents ghost clicks and default behavior
-    e.stopPropagation();
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
     console.log("Back button activated!");
 
     // Soft Reset UI
     waitingScreen.classList.add('hidden');
-    menu.classList.remove('hidden'); // Show menu immediately
+    remoteWaitingScreen.classList.add('hidden');
+    menu.classList.remove('hidden');
 
     // Clear Local State
     roomId = null;
@@ -243,7 +303,6 @@ function handleBack(e) {
     if (soloInterval) clearInterval(soloInterval);
 
     // Reset Socket
-    // Use a short timeout to ensure the UI update renders before any potential socket lag
     setTimeout(() => {
         socket.disconnect();
         socket.connect();
@@ -252,6 +311,23 @@ function handleBack(e) {
 
 backBtn.addEventListener('click', handleBack);
 backBtn.addEventListener('touchstart', handleBack, { passive: false });
+remoteBackBtn.addEventListener('click', handleBack);
+
+// Copy Code Logic
+copyCodeBtn.addEventListener('click', () => {
+    const code = remoteRoomCode.innerText;
+    navigator.clipboard.writeText(code).then(() => {
+        const originalText = copyCodeBtn.innerText;
+        copyCodeBtn.innerText = "COPIADO!";
+        copyCodeBtn.style.background = "var(--fg)";
+        copyCodeBtn.style.color = "var(--bg)";
+        setTimeout(() => {
+            copyCodeBtn.innerText = originalText;
+            copyCodeBtn.style.background = "";
+            copyCodeBtn.style.color = "";
+        }, 2000);
+    });
+});
 
 // QR Scanner Logic
 const scanBtn = document.getElementById('scan-btn');
@@ -291,6 +367,7 @@ scanBtn.addEventListener('click', () => {
             } catch (e) { }
 
             roomInput.value = code;
+            isRemoteMode = false; // Scanning QR is always nearby/split-screen mode
             socket.emit('join_game', code);
             stopScanner();
         },
@@ -389,15 +466,17 @@ function stopScanner() {
 }
 
 socket.on('game_start', (state) => {
+    console.log("SERVIDOR ENVIOU GAME_START. MODO DA SALA:", state.mode);
     gameState = state;
+    // O MODO DO SERVIDOR É O QUE MANDA
+    isRemoteMode = (state.mode === 'remote');
+
     waitingScreen.classList.add('hidden');
+    remoteWaitingScreen.classList.add('hidden');
     menu.classList.add('hidden');
     document.getElementById('score-container').classList.remove('hidden');
 
-    // Play the start whistle
     SFX.score();
-
-    // Initialize direction trackers to avoid ghost sounds on launch
     lastBallDx = state.ball.dx;
     lastBallDy = state.ball.dy;
 });
@@ -457,14 +536,27 @@ socket.on('player_disconnected', () => {
 function updateScores() {
     if (!gameState) return;
 
-    // Calculate My Score
-    // If I am socket.id... wait, I don't know my socket.id easily effectively unless I store it?
-    // Actually, I can derive my score from 'mySide'.
+    const scoreContainer = document.getElementById('score-container');
+    const theirScoreElem = document.getElementById('their-score');
+
+    // Rely on gameState.mode from server
+    const currentMode = gameState.mode || (isRemoteMode ? 'remote' : 'nearby');
+
+    if (currentMode === 'remote') {
+        scoreContainer.classList.add('remote-mode');
+    } else {
+        scoreContainer.classList.remove('remote-mode');
+    }
 
     const myId = Object.keys(gameState.players).find(id => gameState.players[id].side === mySide);
+    const theirSide = mySide === 'bottom' ? 'top' : 'bottom';
+    const theirId = Object.keys(gameState.players).find(id => gameState.players[id].side === theirSide);
+
     const myScore = myId ? gameState.players[myId].score : 0;
+    const theirScore = theirId ? gameState.players[theirId].score : 0;
 
     scoreElem.innerText = myScore;
+    theirScoreElem.innerText = theirScore;
 }
 
 // Input Handling
@@ -516,13 +608,9 @@ function handleInput(e) {
 // Rendering Loop
 const COURT_WIDTH = 100;
 const COURT_HEIGHT = 200; // Total world height
-// My Viewport:
-// If Bottom: Y 0 to 100.
-// If Top: Y 200 to 100 (Inverted).
 
 function render() {
-    // Clear (Transparent to show score)
-    ctx.clearRect(0, 0, canvas.width, canvas.height); // Use clearRect instead of fillRect(black)
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (!gameState) {
         requestAnimationFrame(render);
@@ -531,24 +619,42 @@ function render() {
 
     // Coordinate Transform
     const scaleX = canvas.width / COURT_WIDTH;
-    const scaleY = canvas.height / 100;
+
+    // DECISAO DE VIEWPORT (FORÇADA PELO GAMESTATE SE EXISTIR)
+    let fullArena = isRemoteMode;
+    if (gameState && gameState.mode) {
+        fullArena = (gameState.mode === 'remote');
+    }
+
+    const viewHeight = fullArena ? 200 : 100;
+    const scaleY = canvas.height / viewHeight;
 
     function project(x, y) {
         let sx, sy;
 
-        if (mySide === 'bottom') {
-            // Standard View
-            sx = x * scaleX;
-            sy = (100 - y) * scaleY;
+        if (fullArena) {
+            // MOSTRAR ARENA COMPLETA (0 a 200) - Cada pixel lógico mapeado para a tela inteira
+            if (mySide === 'bottom') {
+                sx = x * scaleX;
+                sy = (200 - y) * scaleY;
+            } else {
+                sx = (100 - x) * scaleX;
+                sy = y * scaleY;
+            }
         } else {
-            // Top Player (Inverted View for Head-to-Head)
-            // X: 100 -> 0 (Left), 0 -> 100 (Right)
-            sx = (100 - x) * scaleX;
-            // Y: 100 -> 0 (Top), 200 -> 100 (Bottom)
-            sy = (y - 100) * scaleY;
+            // MOSTRAR APENAS METADE (Modo Juntos)
+            if (mySide === 'bottom') {
+                sx = x * scaleX;
+                sy = (100 - y) * scaleY;
+            } else {
+                sx = (100 - x) * scaleX;
+                sy = (y - 100) * scaleY;
+            }
         }
         return { x: sx, y: sy };
     }
+
+
 
     // Draw Ball (Stepped Square style like the "O" in PONG)
     const ballPos = project(gameState.ball.x, gameState.ball.y);
@@ -589,26 +695,34 @@ function render() {
         ctx.fillRect(p2Pos.x - pWidth / 2, p2Pos.y - pHeight / 2, pWidth, pHeight);
     }
 
-    // Draw Divider Line (Dashed only in Multiplayer)
+    // Draw Divider Line
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 4;
+
     if (isSoloMode) {
-        ctx.setLineDash([]); // Solid wall for solo
+        ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(canvas.width, 0); ctx.stroke();
+    } else if (fullArena) {
+        // MODO REMOTO: Rede exatamente no meio (Y Lógico 100)
+        ctx.setLineDash([10, 15]);
+        const midY = 100 * scaleY; // y=100 em uma arena de 200
+        ctx.beginPath();
+        ctx.moveTo(0, midY);
+        ctx.lineTo(canvas.width, midY);
+        ctx.stroke();
+
+        // Moldura para verificar se a arena está certa
+        ctx.setLineDash([]);
+        ctx.strokeStyle = "rgba(255,255,255,0.1)";
+        ctx.strokeRect(0, 0, canvas.width, canvas.height);
     } else {
-        ctx.setLineDash([10, 15]); // Dash pattern for multiplayer
+        // MODO JUNTOS: Rede no topo da tela
+        ctx.setLineDash([10, 15]);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(canvas.width, 0);
+        ctx.stroke();
     }
-
-    // Line is always at Y=100.
-    // For P1, Y=100 is Top (sy=0).
-    // For P2, Y=100 is Top (sy=0).
-    // Wait, if P2 Y=100 maps to sy=0 (Top)...
-    // Then both players see the "Divider" at the Top of their screen.
-    // Which creates the seam. This is correct.
-
-    ctx.beginPath();
-    ctx.moveTo(0, 0); // Top of screen
-    ctx.lineTo(canvas.width, 0);
-    ctx.stroke();
 
     ctx.setLineDash([]); // Reset
 

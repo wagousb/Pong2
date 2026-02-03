@@ -23,9 +23,21 @@ const PADDLE_WIDTH = 20;
 io.on('connection', (socket) => {
     console.log('a user connected:', socket.id);
 
-    socket.on('create_game', () => {
+    // Initial rooms update
+    sendRoomsList();
+
+    socket.on('get_rooms', () => {
+        sendRoomsList(socket);
+    });
+
+    socket.on('create_game', (data) => {
+        const roomName = data && data.roomName ? data.roomName.trim().substring(0, 15) : null;
+        const mode = (data && data.mode) || 'remote';
         const roomId = Math.random().toString(36).substring(2, 7);
+
         games[roomId] = {
+            name: roomName || `SALA ${roomId.toUpperCase()}`,
+            mode: mode, // 'nearby' or 'remote'
             players: {
                 [socket.id]: { side: 'bottom', x: 50, score: 0, width: 20 }
             },
@@ -33,7 +45,8 @@ io.on('connection', (socket) => {
             status: 'waiting'
         };
         socket.join(roomId);
-        socket.emit('game_created', { roomId, side: 'bottom' });
+        socket.emit('game_created', { roomId, side: 'bottom', mode: mode });
+        sendRoomsList(); // Broadcast update
     });
 
     socket.on('join_game', (roomId) => {
@@ -45,9 +58,10 @@ io.on('connection', (socket) => {
             game.ball = { x: 50, y: 100, dx: (Math.random() > 0.5 ? 1 : -1) * 0.5, dy: (Math.random() > 0.5 ? 1 : -1) * 0.5 };
 
             socket.join(roomId);
-            socket.emit('game_joined', { roomId, side: 'top' });
+            socket.emit('game_joined', { roomId, side: 'top', mode: game.mode });
             io.to(roomId).emit('game_start', game);
             startGameLoop(roomId);
+            sendRoomsList(); // Broadcast update
         } else {
             socket.emit('error_msg', 'Room full or does not exist');
         }
@@ -58,49 +72,43 @@ io.on('connection', (socket) => {
         if (game && game.players[socket.id]) {
             const player = game.players[socket.id];
             const pWidth = player.width || 20;
-            // Clamp x based on dynamic width
             const clampedX = Math.max(pWidth / 2, Math.min(COURT_WIDTH - pWidth / 2, x));
             player.x = clampedX;
-            // Broadcast immediately for smooth movement? Or wait for tick?
-            // Let's broadcast updates on tick for ball, but maybe immediate for paddles is okay?
-            // Actually, let's just update state and let loop handle broadcast
         }
     });
 
     socket.on('disconnect', () => {
         console.log('user disconnected', socket.id);
 
-        // Find which game this player was in
         let targetRoomId = null;
-
         for (const [roomId, game] of Object.entries(games)) {
             if (game.players[socket.id]) {
                 targetRoomId = roomId;
-                // Remove player
                 delete game.players[socket.id];
-
-                // If game was playing or waiting, notify other player
-                // Actually, if it was 'playing', the game is now broken.
-                // If 'waiting', the room is just empty or has 1 player left.
-
-                // Broadcast to room
                 io.to(roomId).emit('player_disconnected');
-
-                // Cleanup if room empty
                 if (Object.keys(game.players).length === 0) {
                     delete games[roomId];
                 } else {
-                    // Reset game status if it was playing, so remaining player goes back to waiting?
-                    // Or just let client handle the 'player_disconnected' event to reset local state.
                     game.status = 'waiting';
-                    // Also delete the game/room because we want to force a full reset for simplicity per user request
-                    delete games[roomId];
+                    delete games[roomId]; // Forced reset per previous instruction
                 }
+                sendRoomsList(); // Broadcast update
                 break;
             }
         }
     });
 });
+
+function sendRoomsList(target = io) {
+    const list = Object.entries(games)
+        .filter(([id, game]) => game.status === 'waiting')
+        .map(([id, game]) => ({
+            id,
+            name: game.name,
+            playerCount: Object.keys(game.players).length
+        }));
+    target.emit('rooms_update', list);
+}
 
 function startGameLoop(roomId) {
     let speedMultiplier = 1.0;

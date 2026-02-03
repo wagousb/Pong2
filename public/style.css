@@ -26,29 +26,39 @@ body {
 
 #score-container {
     position: absolute;
-    top: 20px;
-    right: 20px;
-    width: auto;
-    height: auto;
-    display: block;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     pointer-events: none;
     z-index: 20;
-    /* Above canvas? Yes, so it's readable */
-    font-weight: bold;
-    opacity: 1;
-    /* Fully visible */
 }
 
 #my-score {
+    position: absolute;
+    bottom: 30px;
+    right: 20px;
     font-family: 'Press Start 2P', cursive;
-    font-size: 2rem;
-    line-height: 1;
+    font-size: 2.5rem;
     color: var(--fg);
-    border: none;
-    padding: 10px 20px;
-    background: transparent;
-    /* Remove background rectangle if border is gone */
-    opacity: 0.9;
+    opacity: 0.6;
+}
+
+#their-score {
+    position: absolute;
+    top: 30px;
+    right: 20px;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 2.5rem;
+    color: var(--fg);
+    opacity: 0.6;
+    display: none;
+    /* Hidden by default, shown in remote mode via JS */
+}
+
+/* Show opponent score in remote mode */
+#score-container.remote-mode #their-score {
+    display: block;
 }
 
 #game-canvas {
@@ -511,5 +521,247 @@ input::placeholder {
 
     100% {
         transform: scale(1);
+    }
+}
+
+/* Room List Styles */
+#custom-room-name {
+    margin-bottom: 10px;
+    border-style: solid;
+}
+
+#rooms-list-container {
+    margin-top: 1.5rem;
+    max-height: 250px;
+    overflow-y: auto;
+    border-top: 2px solid var(--gray);
+    padding-top: 1rem;
+}
+
+.list-title {
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.7rem;
+    color: var(--fg);
+    margin-bottom: 1rem;
+    opacity: 0.8;
+}
+
+#rooms-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.room-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border: 2px solid var(--fg);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.room-item:hover {
+    background: var(--fg);
+    color: var(--bg);
+}
+
+.room-name {
+    font-family: inherit;
+    font-weight: bold;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 60%;
+}
+
+.room-status {
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.6rem;
+    opacity: 0.7;
+}
+
+.room-item:hover .room-status {
+    opacity: 1;
+}
+
+/* Scrollbar Style */
+#rooms-list-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+#rooms-list-container::-webkit-scrollbar-track {
+    background: var(--bg);
+}
+
+#rooms-list-container::-webkit-scrollbar-thumb {
+    background: var(--fg);
+}
+
+/* Mode Selector Styles */
+.mode-selector {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.mode-option {
+    flex: 1;
+    cursor: pointer;
+}
+
+.mode-option input {
+    display: none;
+}
+
+.mode-btn {
+    display: block;
+    padding: 0.8rem 0.5rem;
+    border: 2px solid var(--fg);
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.7rem;
+    color: var(--fg);
+    text-align: center;
+    transition: all 0.2s;
+}
+
+.mode-option input:checked+.mode-btn {
+    background: var(--fg);
+    color: var(--bg);
+}
+
+.mode-option:hover .mode-btn {
+    border-color: #aaa;
+}
+
+/* Remote Waiting Screen */
+#remote-waiting-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    box-sizing: border-box;
+}
+
+.remote-waiting-content {
+    border: 4px solid var(--fg);
+    padding: 2.5rem;
+    background: var(--bg);
+    box-shadow: 15px 15px 0px var(--gray);
+    width: 100%;
+    max-width: 450px;
+    text-align: center;
+}
+
+.remote-title {
+    font-family: 'Press Start 2P', cursive;
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+    color: var(--fg);
+    border-bottom: 2px solid var(--gray);
+    padding-bottom: 1rem;
+}
+
+.room-info-card {
+    background: var(--gray);
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.room-info-card .label {
+    font-size: 0.7rem;
+    opacity: 0.7;
+}
+
+.room-info-card .value {
+    font-weight: bold;
+    font-size: 1rem;
+    text-transform: uppercase;
+}
+
+.code-container {
+    margin: 2rem 0;
+}
+
+.code-container .label {
+    display: block;
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.8;
+}
+
+.big-code {
+    font-size: 3.5rem !important;
+    background: var(--fg);
+    color: var(--bg);
+    border: none;
+    margin: 0;
+    font-family: 'Press Start 2P', cursive;
+    /* Garantindo estilo 8-bit */
+}
+
+.secondary-btn {
+    background: transparent;
+    color: var(--fg);
+    border: 2px solid var(--fg);
+    padding: 0.8rem;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    transition: all 0.2s;
+    width: 100%;
+    font-family: inherit;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.secondary-btn:active {
+    background: var(--fg);
+    color: var(--bg);
+}
+
+.hint {
+    font-size: 0.7rem;
+    opacity: 0.6;
+    margin-bottom: 2rem;
+}
+
+.loading-bar-container {
+    width: 100%;
+    height: 10px;
+    background: var(--gray);
+    position: relative;
+    overflow: hidden;
+}
+
+.loading-bar {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: var(--fg);
+    animation: loading-slide 2s linear infinite;
+}
+
+@keyframes loading-slide {
+    0% {
+        left: -100%;
+    }
+
+    100% {
+        left: 100%;
     }
 }

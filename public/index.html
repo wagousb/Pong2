@@ -13,6 +13,7 @@
     <div id="game-layer">
         <div id="score-container" class="hidden">
             <span id="my-score">0</span>
+            <span id="their-score">0</span>
         </div>
         <canvas id="game-canvas"></canvas>
     </div>
@@ -23,7 +24,27 @@
             <h2 class="subtitle">MULTIPLAY & ONLINE</h2>
 
             <div class="menu-card">
+                <input type="text" id="custom-room-name" placeholder="NOME DA SALA (OPCIONAL)" maxlength="15">
+
+                <div class="mode-selector">
+                    <label class="mode-option">
+                        <input type="radio" name="game-mode" value="nearby">
+                        <span class="mode-btn">JUNTOS</span>
+                    </label>
+                    <label class="mode-option">
+                        <input type="radio" name="game-mode" value="remote" checked>
+                        <span class="mode-btn">À DISTÂNCIA</span>
+                    </label>
+                </div>
+
                 <button id="create-btn">CRIE UMA SALA</button>
+            </div>
+
+            <div id="rooms-list-container" class="menu-card hidden">
+                <h3 class="list-title">SALAS DISPONÍVEIS</h3>
+                <div id="rooms-list">
+                    <!-- Rooms will be added here -->
+                </div>
             </div>
 
             <div class="menu-divider">OU</div>
@@ -88,13 +109,35 @@
 
     <div id="waiting-screen" class="hidden">
         <button id="back-btn" class="close-btn">X</button>
-        <h2>ESPERANDO O OUTRO JOGADOR</h2>
-        <p>COMPARTILHE O CÓDIGO:</p>
-        <div id="display-room-code" class="code-box"></div>
-        <div class="menu-divider">OU</div>
+        <h2>MODO: JUNTOS</h2>
+        <p>ESPERANDO O OUTRO JOGADOR</p>
+        <p>ESCANEIE O QR CODE:</p>
         <div id="qrcode"></div>
+        <div class="menu-divider">OU</div>
+        <p>USE O CÓDIGO:</p>
+        <div id="display-room-code" class="code-box"></div>
         <p class="loading-text"><span class="dots"></span></p>
     </div>
+
+    <div id="remote-waiting-screen" class="hidden">
+        <button id="remote-back-btn" class="close-btn">X</button>
+        <div class="remote-waiting-content">
+            <h2 class="remote-title">MODO: À DISTÂNCIA</h2>
+            <div class="room-info-card">
+                <span class="label">SALA:</span>
+                <span id="remote-room-name" class="value">---</span>
+            </div>
+            <p>ESPERANDO OPONENTE...</p>
+            <div class="code-container">
+                <span class="label">CÓDIGO DA SALA:</span>
+                <div id="remote-room-code" class="code-box big-code"></div>
+            </div>
+            <button id="copy-code-btn" class="secondary-btn">COPIAR CÓDIGO</button>
+            <p class="hint">Compartilhe este código com quem você quer jogar!</p>
+            <div class="loading-bar-container">
+                <div class="loading-bar"></div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
