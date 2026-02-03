@@ -249,8 +249,8 @@ socket.on('game_update', (state) => {
 });
 
 socket.on('player_disconnected', () => {
-    alert('O outro jogador desconectou!');
-    window.location.reload(); // Simplest way to "return to start" cleanly
+    document.getElementById('disconnect-modal').classList.remove('hidden');
+    // We don't reload immediately anymore, the button in the modal handles it
 });
 
 function updateScores() {

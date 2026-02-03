@@ -433,3 +433,64 @@ input::placeholder {
     opacity: 0.7;
     pointer-events: none;
 }
+
+/* Disconnect Modal */
+#disconnect-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 200;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: auto;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+#disconnect-modal .modal-content {
+    border: 4px solid var(--fg);
+    background: var(--bg);
+    padding: 3rem 2rem;
+    text-align: center;
+    box-shadow: 15px 15px 0px var(--gray);
+    max-width: 400px;
+    width: 100%;
+}
+
+#disconnect-modal h2 {
+    font-family: 'Press Start 2P', cursive;
+    color: #ff0000;
+    margin-bottom: 2rem;
+    font-size: 1.8rem;
+    line-height: 1.2;
+}
+
+#disconnect-modal p {
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.7rem;
+    line-height: 1.8;
+    margin-bottom: 2.5rem;
+    color: var(--fg);
+}
+
+#disconnect-modal button {
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.02);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
