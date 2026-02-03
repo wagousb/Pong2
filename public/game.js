@@ -106,57 +106,75 @@ const scanBtn = document.getElementById('scan-btn');
 const scannerModal = document.getElementById('scanner-modal');
 const closeScannerBtn = document.getElementById('close-scanner');
 let html5QrCode;
+let isScanning = false;
 
 scanBtn.addEventListener('click', () => {
+    if (isScanning) return;
     scannerModal.classList.remove('hidden');
+    isScanning = true;
 
-    // Initialize Scanner
+    // Initialize Scanner with improved settings
     html5QrCode = new Html5Qrcode("reader");
+
+    const config = {
+        fps: 20, // Higher FPS for smoother feel
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0
+    };
+
     html5QrCode.start(
-        { facingMode: "environment" }, // Rear camera
-        {
-            fps: 10,
-            qrbox: { width: 250, height: 250 }
-        },
+        { facingMode: "environment" },
+        config,
         (decodedText, decodedResult) => {
-            // Success
+            // Success - give a tiny vibration feedback if supported
+            if (navigator.vibrate) navigator.vibrate(50);
+
             console.log(`Code scanned = ${decodedText}`);
 
-            // Extract room from URL if it's a URL
-            // Format: http://host/?room=XYZ
             let code = decodedText;
             try {
                 const url = new URL(decodedText);
                 const room = url.searchParams.get('room');
                 if (room) code = room;
-            } catch (e) {
-                // Not a URL, maybe just the code
-            }
+            } catch (e) { }
 
             roomInput.value = code;
             socket.emit('join_game', code);
             stopScanner();
         },
         (errorMessage) => {
-            // Parse error, ignore
+            // Quietly ignore parse errors
         }
     ).catch(err => {
-        alert("Camera error: " + err);
-        scannerModal.classList.add('hidden');
+        console.error("Camera error:", err);
+        alert("Erro na câmera: Certifique-se de dar permissão ou tente usar outro navegador.");
+        stopScanner();
     });
 });
 
 closeScannerBtn.addEventListener('click', () => {
+    console.log("Close scanner clicked");
     stopScanner();
 });
 
+closeScannerBtn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    console.log("Close scanner touched");
+    stopScanner();
+}, { passive: false });
+
 function stopScanner() {
+    console.log("Stopping scanner...");
+    isScanning = false;
     if (html5QrCode) {
+        // Force stop if it's running
         html5QrCode.stop().then(() => {
+            console.log("Scanner stopped successfully");
             html5QrCode.clear();
             scannerModal.classList.add('hidden');
         }).catch(err => {
-            console.error(err);
+            console.warn("Scanner stop error (might not be running):", err);
+            html5QrCode.clear();
             scannerModal.classList.add('hidden');
         });
     } else {
@@ -269,15 +287,43 @@ function render() {
         return { x: sx, y: sy };
     }
 
-    // Draw Ball (Square)
+    // Draw Ball (Stepped Square style like the "O" in PONG)
     const ballPos = project(gameState.ball.x, gameState.ball.y);
 
-    // Draw ball even if slightly off-screen for transition smoothness
     if (ballPos.y >= -50 && ballPos.y <= canvas.height + 50) {
         ctx.fillStyle = '#ffffff';
-        const radius = 2 * scaleX;
-        // Draw square centered at x,y
-        ctx.fillRect(ballPos.x - radius, ballPos.y - radius, radius * 2, radius * 2);
+        const radius = 3 * scaleX; // Slightly larger for detail
+        const x = ballPos.x;
+        const y = ballPos.y;
+        const r = radius;
+
+        // Draw the "Stepped/Pixelated" shape matching the CSS clip-path:
+        // polygon(0% 15%, 15% 15%, 15% 0%, 85% 0%, 85% 15%, 100% 15%, 
+        //         100% 85%, 85% 85%, 85% 100%, 15% 100%, 15% 85%, 0% 85%)
+
+        ctx.beginPath();
+        // Top-left corner indent
+        ctx.moveTo(x - r, y - r * 0.7);
+        ctx.lineTo(x - r * 0.7, y - r * 0.7);
+        ctx.lineTo(x - r * 0.7, y - r);
+
+        // Top-right corner indent
+        ctx.lineTo(x + r * 0.7, y - r);
+        ctx.lineTo(x + r * 0.7, y - r * 0.7);
+        ctx.lineTo(x + r, y - r * 0.7);
+
+        // Bottom-right corner indent
+        ctx.lineTo(x + r, y + r * 0.7);
+        ctx.lineTo(x + r * 0.7, y + r * 0.7);
+        ctx.lineTo(x + r * 0.7, y + r);
+
+        // Bottom-left corner indent
+        ctx.lineTo(x - r * 0.7, y + r);
+        ctx.lineTo(x - r * 0.7, y + r * 0.7);
+        ctx.lineTo(x - r, y + r * 0.7);
+
+        ctx.closePath();
+        ctx.fill();
     }
 
     // Draw Paddles
