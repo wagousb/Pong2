@@ -127,7 +127,9 @@ function startSoloMode() {
     isSoloMode = true;
     mySide = 'bottom';
     menu.classList.add('hidden');
-    document.getElementById('score-container').classList.remove('hidden');
+    const scoreContainer = document.getElementById('score-container');
+    scoreContainer.classList.remove('hidden');
+    scoreContainer.classList.add('solo-mode');
 
     // Initialize local game state
     gameState = {
@@ -293,6 +295,8 @@ function handleBack(e) {
     // Soft Reset UI
     waitingScreen.classList.add('hidden');
     remoteWaitingScreen.classList.add('hidden');
+    document.getElementById('score-container').classList.add('hidden');
+    document.getElementById('score-container').classList.remove('solo-mode');
     menu.classList.remove('hidden');
 
     // Clear Local State

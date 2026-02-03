@@ -61,6 +61,11 @@ body {
     display: block;
 }
 
+#score-container.solo-mode #my-score {
+    bottom: auto;
+    top: 30px;
+}
+
 #game-canvas {
     position: relative;
     z-index: 2;
