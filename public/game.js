@@ -22,14 +22,8 @@ let lastP2Score = 0;
 let isSoloMode = false;
 let soloInterval = null;
 
-// Audio System
+// Audio System (8-bit style)
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-const hitSound = new Audio('https://gfxsounds.com/wp-content/uploads/2021/03/Hitting-the-ball-table-tennis-paddle.mp3');
-hitSound.preload = 'auto';
-
-const whistleSound = new Audio('https://www.soundjay.com/misc/sounds/referee-whistle-01.mp3'); // High-pitched sharp whistle
-whistleSound.preload = 'auto';
-
 function playSound(freq, type, duration, volume = 0.1) {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
@@ -45,21 +39,11 @@ function playSound(freq, type, duration, volume = 0.1) {
 }
 
 const SFX = {
-    hit: () => {
-        // Use the real audio sample
-        const sound = hitSound.cloneNode();
-        sound.volume = 0.6;
-        sound.play().catch(e => console.warn("Audio play blocked:", e));
-    },
+    hit: () => playSound(440, 'square', 0.1),
     wall: () => playSound(330, 'square', 0.08),
     score: () => {
-        // Realistic referee whistle
-        const sound = whistleSound.cloneNode();
-        sound.volume = 0.6;
-        sound.play().catch(e => {
-            console.warn("Audio play blocked. Attempting to resume AudioContext...", e);
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-        });
+        playSound(523, 'square', 0.2);
+        setTimeout(() => playSound(659, 'square', 0.4), 100);
     },
     powerup: () => {
         playSound(880, 'sine', 0.1);
