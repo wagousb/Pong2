@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Pong Multi-Device</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="game-layer">
+        <div id="score-container" class="hidden">
+            <span id="my-score">0</span>
+        </div>
+        <canvas id="game-canvas"></canvas>
+    </div>
+
+    <div id="ui-layer">
+        <div id="menu">
+            <h1>P<span class="square-o"></span>NG</h1>
+            <h2 class="subtitle">MULTIPLAY & ONLINE</h2>
+
+            <div class="menu-card">
+                <button id="create-btn">CRIE UMA SALA</button>
+            </div>
+
+            <div class="menu-divider">OU</div>
+
+            <div class="menu-card">
+                <div class="join-input-group">
+                    <input type="text" id="room-code" placeholder="ENTRE COM CÓDIGO" maxlength="5">
+                    <button id="scan-btn" title="Ler QR Code">
+                        <!-- Scanner Icon -->
+                        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <!-- Corners -->
+                            <path d="M4 8V5a1 1 0 0 1 1-1h3" />
+                            <path d="M16 4h3a1 1 0 0 1 1 1v3" />
+                            <path d="M4 16v3a1 1 0 0 0 1 1h3" />
+                            <path d="M16 20h3a1 1 0 0 0 1-1v-3" />
+                            <!-- Scan Line -->
+                            <line x1="4" y1="12" x2="20" y2="12" />
+                        </svg>
+                    </button>
+                </div>
+                <button id="join-btn">ENTRE NA SALA</button>
+            </div>
+            <div class="copyright">&copy; RENGAW - 2026</div>
+        </div>
+
+        <div id="scanner-modal" class="hidden">
+            <button id="close-scanner" class="close-btn">X</button>
+            <div class="scanner-wrapper">
+                <div id="reader"></div>
+                <!-- Viewfinder Overlay -->
+                <div class="scanner-overlay">
+                    <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <path d="M10,30 V10 H30" fill="none" stroke="white" stroke-width="5"
+                            shape-rendering="crispEdges" />
+                        <path d="M70,10 H90 V30" fill="none" stroke="white" stroke-width="5"
+                            shape-rendering="crispEdges" />
+                        <path d="M10,70 V90 H30" fill="none" stroke="white" stroke-width="5"
+                            shape-rendering="crispEdges" />
+                        <path d="M90,70 V90 H70" fill="none" stroke="white" stroke-width="5"
+                            shape-rendering="crispEdges" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <p id="status-msg"></p>
+    </div>
+
+    <div id="waiting-screen" class="hidden">
+        <button id="back-btn" class="close-btn">X</button>
+        <h2>ESPERANDO O OUTRO JOGADOR</h2>
+        <p>COMPARTILHE O CÓDIGO:</p>
+        <div id="display-room-code" class="code-box"></div>
+        <div class="menu-divider">OU</div>
+        <div id="qrcode"></div>
+        <p class="loading-text"><span class="dots"></span></p>
+    </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="game.js"></script>
+</body>
+
+</html>

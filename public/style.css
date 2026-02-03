@@ -1,0 +1,362 @@
+:root {
+    --fg: #ffffff;
+    --bg: #000000;
+    --gray: #333333;
+}
+
+body {
+    margin: 0;
+    overflow: hidden;
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: 'Courier New', Courier, monospace;
+    touch-action: none;
+    user-select: none;
+}
+
+/* Game Layer */
+#game-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+#score-container {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: auto;
+    height: auto;
+    display: block;
+    pointer-events: none;
+    z-index: 20;
+    /* Above canvas? Yes, so it's readable */
+    font-weight: bold;
+    opacity: 1;
+    /* Fully visible */
+}
+
+#my-score {
+    font-size: 2rem;
+    line-height: 1;
+    color: var(--fg);
+    border: none;
+    padding: 10px 20px;
+    background: transparent;
+    /* Remove background rectangle if border is gone */
+    opacity: 0.9;
+}
+
+#game-canvas {
+    position: relative;
+    z-index: 2;
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* UI Layer */
+#ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+}
+
+#menu,
+#waiting-screen {
+    position: relative;
+    /* For Close Button */
+    pointer-events: auto;
+    background: var(--bg);
+    border: 4px solid var(--fg);
+    padding: 2rem;
+    text-align: center;
+    max-width: 90%;
+    box-shadow: 10px 10px 0px var(--gray);
+}
+
+.hidden {
+    display: none !important;
+}
+
+h1 {
+    font-size: 4rem;
+    margin: 0;
+    line-height: 1;
+    font-family: 'Press Start 2P', cursive;
+    margin-bottom: 2rem;
+    position: relative;
+    display: inline-block;
+    /* Needed for ::after positioning relative to text width */
+    margin-bottom: 0.5rem;
+    /* Reduced space to subtitle */
+}
+
+/* The "Paddle" */
+h1::after {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 20px;
+    /* Thicker paddle */
+    background-color: var(--fg);
+    margin-top: 2px;
+    /* Closer relative to text */
+}
+
+.square-o {
+    display: inline-block;
+    width: 0.95em;
+    /* Match letter block size */
+    height: 0.95em;
+    background-color: var(--fg);
+    margin: 0 0.25em 0 0.05em;
+    /* Closer to P (left), standard to N (right) */
+    vertical-align: middle;
+    position: relative;
+    top: -0.15em;
+    /* Pixelated/Stepped Corners */
+    clip-path: polygon(0% 15%,
+            15% 15%, 15% 0%,
+            85% 0%, 85% 15%,
+            100% 15%, 100% 85%,
+            85% 85%, 85% 100%,
+            15% 100%, 15% 85%,
+            0% 85%);
+}
+
+.subtitle {
+    font-size: 1rem;
+    margin-bottom: 2rem;
+    font-weight: normal;
+    letter-spacing: 5px;
+}
+
+.menu-card {
+    margin: 1rem 0;
+}
+
+.menu-divider {
+    font-size: 0.8rem;
+    color: #666;
+    margin: 0.5rem 0;
+}
+
+button {
+    background: var(--fg);
+    color: var(--bg);
+    border: none;
+    padding: 1rem 2rem;
+    font-size: 1.2rem;
+    font-family: inherit;
+    font-weight: bold;
+    cursor: pointer;
+    width: 100%;
+    text-transform: uppercase;
+}
+
+.close-btn {
+    position: absolute;
+    /* Relative to menu/waiting-screen */
+    top: 5px;
+    right: 5px;
+    background: transparent;
+    color: var(--fg);
+    border: none;
+    font-size: 1.5rem;
+    width: auto;
+    padding: 0 10px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: bold;
+}
+
+.close-btn:hover {
+    color: #ff0000;
+}
+
+#qrcode {
+    margin: 20px auto;
+    background: white;
+    padding: 10px;
+    width: fit-content;
+}
+
+input {
+    background: transparent;
+    border: 2px solid var(--fg);
+    color: var(--fg);
+    padding: 0.8rem;
+    font-size: 1.2rem;
+    font-family: inherit;
+    text-align: center;
+    text-transform: uppercase;
+    width: 100%;
+    /* Match button width */
+    box-sizing: border-box;
+    /* Include padding in width */
+    margin-bottom: 0.5rem;
+    /* keep default margin for non-grouped inputs if any */
+    display: block;
+}
+
+input::placeholder {
+    color: #666;
+}
+
+.code-box {
+    font-size: 3rem;
+    border: 2px dashed var(--fg);
+    padding: 1rem;
+    margin: 1rem 0;
+    font-weight: bold;
+    letter-spacing: 5px;
+}
+
+/* Loading Animation */
+.loading-text {
+    font-family: 'Press Start 2P', cursive;
+    font-size: 1.2rem;
+    margin-top: 1rem;
+}
+
+.dots {
+    display: inline-block;
+    width: 3ch;
+    /* Reserve space for 3 dots */
+    text-align: left;
+}
+
+.dots::after {
+    content: '';
+    animation: typing-dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes typing-dots {
+
+    0%,
+    20% {
+        content: '';
+    }
+
+    40% {
+        content: '.';
+    }
+
+    60% {
+        content: '..';
+    }
+
+    80%,
+    100% {
+        content: '...';
+    }
+}
+
+/* Join Input Group */
+.join-input-group {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
+
+.join-input-group input {
+    margin-bottom: 0;
+    width: 100%;
+    flex: 1;
+    /* Take available space */
+}
+
+#scan-btn {
+    width: auto;
+    padding: 0.4rem;
+    /* Reduced padding for larger icon */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--fg);
+    color: var(--bg);
+    border: none;
+    cursor: pointer;
+    height: 100%;
+    /* Match input height if possible, or font size triggers it */
+}
+
+#scan-btn svg {
+    display: block;
+}
+
+/* Scanner Modal */
+#scanner-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+#reader {
+    width: 300px;
+    height: 300px;
+    background: #000;
+    /* Border removed, using overlay instead */
+}
+
+.scanner-wrapper {
+    position: relative;
+    width: 300px;
+    height: 300px;
+}
+
+.scanner-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
+    box-sizing: border-box;
+    padding: 20px;
+    /* Inset the brackets slightly if needed, or SVG handles it */
+}
+
+.scanner-overlay svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.5));
+    /* Visibility contrast */
+}
+
+/* Footer */
+.copyright {
+    position: fixed;
+    bottom: 10px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.7rem;
+    color: var(--fg);
+    opacity: 0.7;
+    pointer-events: none;
+}
