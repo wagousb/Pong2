@@ -40,6 +40,7 @@ body {
 }
 
 #my-score {
+    font-family: 'Press Start 2P', cursive;
     font-size: 2rem;
     line-height: 1;
     color: var(--fg);

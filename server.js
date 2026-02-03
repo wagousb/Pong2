@@ -30,7 +30,6 @@ io.on('connection', (socket) => {
                 [socket.id]: { side: 'bottom', x: 50, score: 0, width: 20 }
             },
             ball: { x: 50, y: 100, dx: 0, dy: 0, lastHitBy: null },
-            powerUps: [],
             status: 'waiting'
         };
         socket.join(roomId);
@@ -120,15 +119,7 @@ function startGameLoop(roomId) {
             lastSpeedUpdate = Date.now();
         }
 
-        // Spawn Power-up (roughly every 8-12 seconds)
-        if (game.powerUps.length < 2 && Math.random() < 0.002) {
-            game.powerUps.push({
-                id: Math.random().toString(36).substring(7),
-                x: 20 + Math.random() * 60,
-                y: 50 + Math.random() * 100,
-                type: ['WIDE', 'FAST', 'SMALL'][Math.floor(Math.random() * 3)]
-            });
-        }
+
 
         // Move Ball with Multiplier
         const prevY = game.ball.y;
@@ -189,32 +180,6 @@ function startGameLoop(roomId) {
                     const hitOffset = (game.ball.x - p2.x) / p2WidthHalf;
                     game.ball.dx += hitOffset * 0.5;
                 }
-            }
-        }
-
-        // Check Power-up Collisions
-        for (let i = game.powerUps.length - 1; i >= 0; i--) {
-            const pu = game.powerUps[i];
-            const dist = Math.sqrt((game.ball.x - pu.x) ** 2 + (game.ball.y - pu.y) ** 2);
-            if (dist < 8 && game.ball.lastHitBy) {
-                const playerId = game.ball.lastHitBy;
-                const player = game.players[playerId];
-                const opponentId = Object.keys(game.players).find(id => id !== playerId);
-                const opponent = game.players[opponentId];
-
-                // Apply Effect
-                if (pu.type === 'WIDE') {
-                    player.width = 40;
-                    setTimeout(() => { if (player) player.width = 20; }, 8000);
-                } else if (pu.type === 'FAST') {
-                    game.ball.dx *= 1.6;
-                    game.ball.dy *= 1.6;
-                } else if (pu.type === 'SMALL' && opponent) {
-                    opponent.width = 10;
-                    setTimeout(() => { if (opponent) opponent.width = 20; }, 8000);
-                }
-
-                game.powerUps.splice(i, 1);
             }
         }
 

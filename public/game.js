@@ -22,8 +22,14 @@ let lastP2Score = 0;
 let isSoloMode = false;
 let soloInterval = null;
 
-// Audio System (8-bit style)
+// Audio System
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const hitSound = new Audio('https://gfxsounds.com/wp-content/uploads/2021/03/Hitting-the-ball-table-tennis-paddle.mp3');
+hitSound.preload = 'auto';
+
+const whistleSound = new Audio('https://www.soundjay.com/misc/sounds/referee-whistle-01.mp3'); // High-pitched sharp whistle
+whistleSound.preload = 'auto';
+
 function playSound(freq, type, duration, volume = 0.1) {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
@@ -39,11 +45,21 @@ function playSound(freq, type, duration, volume = 0.1) {
 }
 
 const SFX = {
-    hit: () => playSound(440, 'square', 0.1),
+    hit: () => {
+        // Use the real audio sample
+        const sound = hitSound.cloneNode();
+        sound.volume = 0.6;
+        sound.play().catch(e => console.warn("Audio play blocked:", e));
+    },
     wall: () => playSound(330, 'square', 0.08),
     score: () => {
-        playSound(523, 'square', 0.2);
-        setTimeout(() => playSound(659, 'square', 0.4), 100);
+        // Realistic referee whistle
+        const sound = whistleSound.cloneNode();
+        sound.volume = 0.6;
+        sound.play().catch(e => {
+            console.warn("Audio play blocked. Attempting to resume AudioContext...", e);
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        });
     },
     powerup: () => {
         playSound(880, 'sine', 0.1);
@@ -91,7 +107,6 @@ function startSoloMode() {
             'solo': { side: 'bottom', x: 50, score: 0, width: 20 }
         },
         ball: { x: 50, y: 50, dx: 0.5, dy: 0.5 },
-        powerUps: [],
         status: 'playing'
     };
 
@@ -132,14 +147,13 @@ function startSoloLoop() {
         // Wall Collisions
         if (ball.x <= 2 || ball.x >= 98) {
             ball.dx *= -1;
-            SFX.wall();
         }
 
         // Ceiling Collision (The User wants the ball to bounce back)
         if (ball.y >= 98) {
             ball.y = 98;
             ball.dy *= -1;
-            SFX.wall();
+            SFX.hit();
             triggerVibrate(15);
         }
 
@@ -168,13 +182,15 @@ function startSoloLoop() {
 
         // Death
         if (ball.y < -5) {
-            SFX.score(); // Game over sound
             triggerVibrate(200);
             // Reset ball
             ball.x = 50;
             ball.y = 50;
             ball.dx = (Math.random() > 0.5 ? 1 : -1) * 0.5;
             ball.dy = 0.5;
+            // Update trackers immediately to prevent ghost collision sound
+            lastBallDx = ball.dx;
+            lastBallDy = ball.dy;
             speedMultiplier = 1.0;
             lastSpeedUpdate = Date.now();
             player.score = 0;
@@ -393,25 +409,40 @@ socket.on('game_start', (state) => {
     waitingScreen.classList.add('hidden');
     menu.classList.add('hidden');
     document.getElementById('score-container').classList.remove('hidden');
+
+    // Play the start whistle
+    SFX.score();
+
+    // Initialize direction trackers to avoid ghost sounds on launch
+    lastBallDx = state.ball.dx;
+    lastBallDy = state.ball.dy;
 });
 
 socket.on('game_update', (state) => {
     // Detect Events for Sound/Haptics
     if (gameState) {
-        // Wall Hit
+        // DETECT RESET: If ball is suddenly in the middle area (serving position)
+        // we force an update of the direction trackers without playing any sound.
+        const isResetting = Math.abs(state.ball.y - 100) < 5;
+
+        // Initialize last directions on first ever update
+        if (lastBallDx === 0 && lastBallDy === 0) {
+            lastBallDx = state.ball.dx;
+            lastBallDy = state.ball.dy;
+        }
+
+        // Wall Hit - Muted as per user request
+        /*
         if (Math.sign(state.ball.dx) !== Math.sign(lastBallDx) && Math.abs(state.ball.x - 50) > 45) {
             SFX.wall();
         }
+        */
+
         // Paddle Hit (Ball changed vertical direction)
-        if (Math.sign(state.ball.dy) !== Math.sign(lastBallDy)) {
+        // ONLY play if we are NOT in the middle of a reset
+        if (!isResetting && Math.sign(state.ball.dy) !== Math.sign(lastBallDy)) {
             SFX.hit();
             triggerVibrate(30);
-        }
-
-        // Powerup Collection (Check if a powerup disappeared)
-        if (gameState.powerUps && state.powerUps && state.powerUps.length < gameState.powerUps.length) {
-            SFX.powerup();
-            triggerVibrate([40, 20, 40]);
         }
 
         // Scoring
@@ -419,6 +450,7 @@ socket.on('game_update', (state) => {
         const p2Id = Object.keys(state.players).find(id => state.players[id].side === 'top');
         if (p1Id && p2Id) {
             if (state.players[p1Id].score > lastP1Score || state.players[p2Id].score > lastP2Score) {
+                // Play whistle when ball is returning to game
                 SFX.score();
                 triggerVibrate(150);
                 lastP1Score = state.players[p1Id].score;
@@ -548,20 +580,7 @@ function render() {
         ctx.fillRect(x - r, y - r, r * 2, r * 2);
     }
 
-    // Draw Power-ups
-    if (gameState.powerUps) {
-        gameState.powerUps.forEach(pu => {
-            const pos = project(pu.x, pu.y);
-            // Draw a rotating diamond shape for powerup
-            ctx.save();
-            ctx.translate(pos.x, pos.y);
-            ctx.rotate(Date.now() / 500);
-            ctx.fillStyle = pu.type === 'WIDE' ? '#00ff00' : (pu.type === 'FAST' ? '#ff0000' : '#ffff00');
-            const s = 6 * scaleX;
-            ctx.fillRect(-s / 2, -s / 2, s, s);
-            ctx.restore();
-        });
-    }
+
 
     // Draw Paddles
     // P1 (Bottom)
