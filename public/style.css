@@ -170,6 +170,24 @@ button {
     text-transform: uppercase;
 }
 
+.menu-footer {
+    margin-top: 1.5rem;
+}
+
+#solo-btn {
+    color: var(--fg);
+    text-decoration: none;
+    font-size: 0.9rem;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+    border-bottom: 1px solid transparent;
+}
+
+#solo-btn:hover {
+    opacity: 1;
+    border-bottom-color: var(--fg);
+}
+
 .close-btn {
     position: absolute;
     top: 15px;

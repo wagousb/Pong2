@@ -10,10 +10,50 @@ const menu = document.getElementById('menu');
 const waitingScreen = document.getElementById('waiting-screen');
 const displayRoomCode = document.getElementById('display-room-code');
 const scoreElem = document.getElementById('my-score');
+const soloBtn = document.getElementById('solo-btn');
 
 let mySide = null; // 'bottom' or 'top'
 let roomId = null;
 let gameState = null;
+let lastBallDx = 0;
+let lastBallDy = 0;
+let lastP1Score = 0;
+let lastP2Score = 0;
+let isSoloMode = false;
+let soloInterval = null;
+
+// Audio System (8-bit style)
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playSound(freq, type, duration, volume = 0.1) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+}
+
+const SFX = {
+    hit: () => playSound(440, 'square', 0.1),
+    wall: () => playSound(330, 'square', 0.08),
+    score: () => {
+        playSound(523, 'square', 0.2);
+        setTimeout(() => playSound(659, 'square', 0.4), 100);
+    },
+    powerup: () => {
+        playSound(880, 'sine', 0.1);
+        setTimeout(() => playSound(1320, 'sine', 0.2), 50);
+    }
+};
+
+function triggerVibrate(ms) {
+    if (navigator.vibrate) navigator.vibrate(ms);
+}
 
 function resize() {
     canvas.width = window.innerWidth;
@@ -33,6 +73,116 @@ joinBtn.addEventListener('click', () => {
         socket.emit('join_game', code);
     }
 });
+
+soloBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    startSoloMode();
+});
+
+function startSoloMode() {
+    isSoloMode = true;
+    mySide = 'bottom';
+    menu.classList.add('hidden');
+    document.getElementById('score-container').classList.remove('hidden');
+
+    // Initialize local game state
+    gameState = {
+        players: {
+            'solo': { side: 'bottom', x: 50, score: 0, width: 20 }
+        },
+        ball: { x: 50, y: 50, dx: 0.5, dy: 0.5 },
+        powerUps: [],
+        status: 'playing'
+    };
+
+    lastP1Score = 0;
+    scoreElem.innerText = "0";
+
+    // Stop socket just in case
+    socket.disconnect();
+
+    startSoloLoop();
+}
+
+function startSoloLoop() {
+    if (soloInterval) clearInterval(soloInterval);
+
+    let speedMultiplier = 1.0;
+    let lastSpeedUpdate = Date.now();
+
+    soloInterval = setInterval(() => {
+        if (!isSoloMode) {
+            clearInterval(soloInterval);
+            return;
+        }
+
+        // Increase speed
+        if (Date.now() - lastSpeedUpdate > 5000) {
+            speedMultiplier += 0.05;
+            lastSpeedUpdate = Date.now();
+        }
+
+        const ball = gameState.ball;
+        const prevBallY = ball.y;
+
+        // Move Ball
+        ball.x += ball.dx * speedMultiplier;
+        ball.y += ball.dy * speedMultiplier;
+
+        // Wall Collisions
+        if (ball.x <= 2 || ball.x >= 98) {
+            ball.dx *= -1;
+            SFX.wall();
+        }
+
+        // Ceiling Collision (The User wants the ball to bounce back)
+        if (ball.y >= 98) {
+            ball.y = 98;
+            ball.dy *= -1;
+            SFX.wall();
+            triggerVibrate(15);
+        }
+
+        // Paddle Collision
+        const player = gameState.players['solo'];
+        const pWidthHalf = (player.width || 20) / 2;
+
+        if (ball.dy < 0 && prevBallY >= 5 && ball.y <= 7) {
+            if (Math.abs(ball.x - player.x) < pWidthHalf + 2) {
+                ball.y = 7;
+                ball.dy *= -1;
+                ball.dx *= 1.05;
+                ball.dy *= 1.05;
+                const hitOffset = (ball.x - player.x) / pWidthHalf;
+                ball.dx += hitOffset * 0.5;
+
+                SFX.hit();
+                triggerVibrate(30);
+
+                // Add point for hitting the paddle in solo mode?
+                // Or just keep the score for how many times you hit it?
+                player.score += 1;
+                scoreElem.innerText = player.score;
+            }
+        }
+
+        // Death
+        if (ball.y < -5) {
+            SFX.score(); // Game over sound
+            triggerVibrate(200);
+            // Reset ball
+            ball.x = 50;
+            ball.y = 50;
+            ball.dx = (Math.random() > 0.5 ? 1 : -1) * 0.5;
+            ball.dy = 0.5;
+            speedMultiplier = 1.0;
+            lastSpeedUpdate = Date.now();
+            player.score = 0;
+            scoreElem.innerText = "0";
+        }
+
+    }, 1000 / 60);
+}
 
 // Socket Events
 socket.on('game_created', (data) => {
@@ -89,6 +239,8 @@ function handleBack(e) {
     roomId = null;
     gameState = null;
     mySide = null;
+    isSoloMode = false;
+    if (soloInterval) clearInterval(soloInterval);
 
     // Reset Socket
     // Use a short timeout to ensure the UI update renders before any potential socket lag
@@ -244,7 +396,40 @@ socket.on('game_start', (state) => {
 });
 
 socket.on('game_update', (state) => {
+    // Detect Events for Sound/Haptics
+    if (gameState) {
+        // Wall Hit
+        if (Math.sign(state.ball.dx) !== Math.sign(lastBallDx) && Math.abs(state.ball.x - 50) > 45) {
+            SFX.wall();
+        }
+        // Paddle Hit (Ball changed vertical direction)
+        if (Math.sign(state.ball.dy) !== Math.sign(lastBallDy)) {
+            SFX.hit();
+            triggerVibrate(30);
+        }
+
+        // Powerup Collection (Check if a powerup disappeared)
+        if (gameState.powerUps && state.powerUps && state.powerUps.length < gameState.powerUps.length) {
+            SFX.powerup();
+            triggerVibrate([40, 20, 40]);
+        }
+
+        // Scoring
+        const p1Id = Object.keys(state.players).find(id => state.players[id].side === 'bottom');
+        const p2Id = Object.keys(state.players).find(id => state.players[id].side === 'top');
+        if (p1Id && p2Id) {
+            if (state.players[p1Id].score > lastP1Score || state.players[p2Id].score > lastP2Score) {
+                SFX.score();
+                triggerVibrate(150);
+                lastP1Score = state.players[p1Id].score;
+                lastP2Score = state.players[p2Id].score;
+            }
+        }
+    }
+
     gameState = state;
+    lastBallDx = state.ball.dx;
+    lastBallDy = state.ball.dy;
     updateScores();
 });
 
@@ -283,7 +468,11 @@ canvas.addEventListener('mousemove', (e) => {
             gameX = 100 - gameX;
         }
 
-        socket.emit('move_paddle', { roomId, x: gameX });
+        if (isSoloMode) {
+            gameState.players['solo'].x = Math.max(10, Math.min(90, gameX));
+        } else {
+            socket.emit('move_paddle', { roomId, x: gameX });
+        }
     }
 });
 
@@ -300,7 +489,11 @@ function handleInput(e) {
             gameX = 100 - gameX;
         }
 
-        socket.emit('move_paddle', { roomId, x: gameX });
+        if (isSoloMode) {
+            gameState.players['solo'].x = Math.max(10, Math.min(90, gameX));
+        } else {
+            socket.emit('move_paddle', { roomId, x: gameX });
+        }
     }
 }
 
@@ -355,6 +548,21 @@ function render() {
         ctx.fillRect(x - r, y - r, r * 2, r * 2);
     }
 
+    // Draw Power-ups
+    if (gameState.powerUps) {
+        gameState.powerUps.forEach(pu => {
+            const pos = project(pu.x, pu.y);
+            // Draw a rotating diamond shape for powerup
+            ctx.save();
+            ctx.translate(pos.x, pos.y);
+            ctx.rotate(Date.now() / 500);
+            ctx.fillStyle = pu.type === 'WIDE' ? '#00ff00' : (pu.type === 'FAST' ? '#ff0000' : '#ffff00');
+            const s = 6 * scaleX;
+            ctx.fillRect(-s / 2, -s / 2, s, s);
+            ctx.restore();
+        });
+    }
+
     // Draw Paddles
     // P1 (Bottom)
     const p1Id = Object.keys(gameState.players).find(id => gameState.players[id].side === 'bottom');
@@ -362,7 +570,7 @@ function render() {
         const p1 = gameState.players[p1Id];
         const p1Pos = project(p1.x, 5);
         ctx.fillStyle = '#ffffff';
-        const pWidth = 20 * scaleX;
+        const pWidth = (p1.width || 20) * scaleX;
         const pHeight = 2 * scaleY;
         ctx.fillRect(p1Pos.x - pWidth / 2, p1Pos.y - pHeight / 2, pWidth, pHeight);
     }
@@ -373,15 +581,19 @@ function render() {
         const p2 = gameState.players[p2Id];
         const p2Pos = project(p2.x, 195);
         ctx.fillStyle = '#ffffff';
-        const pWidth = 20 * scaleX;
+        const pWidth = (p2.width || 20) * scaleX;
         const pHeight = 2 * scaleY;
         ctx.fillRect(p2Pos.x - pWidth / 2, p2Pos.y - pHeight / 2, pWidth, pHeight);
     }
 
-    // Draw Divider Line (Dashed)
+    // Draw Divider Line (Dashed only in Multiplayer)
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 4;
-    ctx.setLineDash([10, 15]); // Dash pattern
+    if (isSoloMode) {
+        ctx.setLineDash([]); // Solid wall for solo
+    } else {
+        ctx.setLineDash([10, 15]); // Dash pattern for multiplayer
+    }
 
     // Line is always at Y=100.
     // For P1, Y=100 is Top (sy=0).

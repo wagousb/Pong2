@@ -27,9 +27,10 @@ io.on('connection', (socket) => {
         const roomId = Math.random().toString(36).substring(2, 7);
         games[roomId] = {
             players: {
-                [socket.id]: { side: 'bottom', x: 50, score: 0 }
+                [socket.id]: { side: 'bottom', x: 50, score: 0, width: 20 }
             },
-            ball: { x: 50, y: 100, dx: 0, dy: 0 },
+            ball: { x: 50, y: 100, dx: 0, dy: 0, lastHitBy: null },
+            powerUps: [],
             status: 'waiting'
         };
         socket.join(roomId);
@@ -39,7 +40,7 @@ io.on('connection', (socket) => {
     socket.on('join_game', (roomId) => {
         const game = games[roomId];
         if (game && Object.keys(game.players).length < 2) {
-            game.players[socket.id] = { side: 'top', x: 50, score: 0 };
+            game.players[socket.id] = { side: 'top', x: 50, score: 0, width: 20 };
             game.status = 'playing';
             // Reset ball
             game.ball = { x: 50, y: 100, dx: (Math.random() > 0.5 ? 1 : -1) * 0.5, dy: (Math.random() > 0.5 ? 1 : -1) * 0.5 };
@@ -56,9 +57,11 @@ io.on('connection', (socket) => {
     socket.on('move_paddle', ({ roomId, x }) => {
         const game = games[roomId];
         if (game && game.players[socket.id]) {
-            // Clamp x
-            const clampedX = Math.max(PADDLE_WIDTH / 2, Math.min(COURT_WIDTH - PADDLE_WIDTH / 2, x));
-            game.players[socket.id].x = clampedX;
+            const player = game.players[socket.id];
+            const pWidth = player.width || 20;
+            // Clamp x based on dynamic width
+            const clampedX = Math.max(pWidth / 2, Math.min(COURT_WIDTH - pWidth / 2, x));
+            player.x = clampedX;
             // Broadcast immediately for smooth movement? Or wait for tick?
             // Let's broadcast updates on tick for ball, but maybe immediate for paddles is okay?
             // Actually, let's just update state and let loop handle broadcast
@@ -117,6 +120,16 @@ function startGameLoop(roomId) {
             lastSpeedUpdate = Date.now();
         }
 
+        // Spawn Power-up (roughly every 8-12 seconds)
+        if (game.powerUps.length < 2 && Math.random() < 0.002) {
+            game.powerUps.push({
+                id: Math.random().toString(36).substring(7),
+                x: 20 + Math.random() * 60,
+                y: 50 + Math.random() * 100,
+                type: ['WIDE', 'FAST', 'SMALL'][Math.floor(Math.random() * 3)]
+            });
+        }
+
         // Move Ball with Multiplier
         const prevY = game.ball.y;
         game.ball.x += game.ball.dx * speedMultiplier;
@@ -140,16 +153,18 @@ function startGameLoop(roomId) {
             const p1Id = Object.keys(game.players).find(id => game.players[id].side === 'bottom');
             if (p1Id) {
                 const p1 = game.players[p1Id];
+                const p1WidthHalf = (p1.width || 20) / 2;
                 // Check X overlap
-                if (Math.abs(game.ball.x - p1.x) < PADDLE_WIDTH_HALF + BALL_RADIUS) {
+                if (Math.abs(game.ball.x - p1.x) < p1WidthHalf + BALL_RADIUS) {
                     // Hit!
                     game.ball.y = PADDLE_Y_OFFSET_BOTTOM + BALL_RADIUS; // Snap to surface
                     game.ball.dy *= -1;
+                    game.ball.lastHitBy = p1Id;
                     // Slight hit boost independent of time multiplier
                     game.ball.dx *= 1.05;
                     game.ball.dy *= 1.05;
 
-                    const hitOffset = (game.ball.x - p1.x) / PADDLE_WIDTH_HALF;
+                    const hitOffset = (game.ball.x - p1.x) / p1WidthHalf;
                     game.ball.dx += hitOffset * 0.5;
                 }
             }
@@ -162,16 +177,44 @@ function startGameLoop(roomId) {
             const p2Id = Object.keys(game.players).find(id => game.players[id].side === 'top');
             if (p2Id) {
                 const p2 = game.players[p2Id];
-                if (Math.abs(game.ball.x - p2.x) < PADDLE_WIDTH_HALF + BALL_RADIUS) {
+                const p2WidthHalf = (p2.width || 20) / 2;
+                if (Math.abs(game.ball.x - p2.x) < p2WidthHalf + BALL_RADIUS) {
                     // Hit!
                     game.ball.y = PADDLE_Y_OFFSET_TOP - BALL_RADIUS; // Snap
                     game.ball.dy *= -1;
+                    game.ball.lastHitBy = p2Id;
                     game.ball.dx *= 1.05;
                     game.ball.dy *= 1.05;
 
-                    const hitOffset = (game.ball.x - p2.x) / PADDLE_WIDTH_HALF;
+                    const hitOffset = (game.ball.x - p2.x) / p2WidthHalf;
                     game.ball.dx += hitOffset * 0.5;
                 }
+            }
+        }
+
+        // Check Power-up Collisions
+        for (let i = game.powerUps.length - 1; i >= 0; i--) {
+            const pu = game.powerUps[i];
+            const dist = Math.sqrt((game.ball.x - pu.x) ** 2 + (game.ball.y - pu.y) ** 2);
+            if (dist < 8 && game.ball.lastHitBy) {
+                const playerId = game.ball.lastHitBy;
+                const player = game.players[playerId];
+                const opponentId = Object.keys(game.players).find(id => id !== playerId);
+                const opponent = game.players[opponentId];
+
+                // Apply Effect
+                if (pu.type === 'WIDE') {
+                    player.width = 40;
+                    setTimeout(() => { if (player) player.width = 20; }, 8000);
+                } else if (pu.type === 'FAST') {
+                    game.ball.dx *= 1.6;
+                    game.ball.dy *= 1.6;
+                } else if (pu.type === 'SMALL' && opponent) {
+                    opponent.width = 10;
+                    setTimeout(() => { if (opponent) opponent.width = 20; }, 8000);
+                }
+
+                game.powerUps.splice(i, 1);
             }
         }
 
@@ -215,6 +258,7 @@ function resetBall(game, serveDirection) {
         // Random direction if no serveDirection provided (e.g. game start)
         game.ball.dy = (Math.random() > 0.5 ? 1 : -1) * 0.5;
     }
+    game.ball.lastHitBy = null; // Clear last hit on reset
 }
 
 const PORT = process.env.PORT || 3000;
