@@ -75,21 +75,24 @@ if (roomParam) {
 }
 
 // Back Button
-document.getElementById('back-btn').addEventListener('click', () => {
-    // Just refresh specifically for now as requested by user to "cancel"
-    // Or better, hide waiting screen and show menu
+// Back Button
+document.getElementById('back-btn').addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation(); 
+    console.log("Back button clicked!");
+
+    // Soft Reset
     waitingScreen.classList.add('hidden');
     menu.classList.remove('hidden');
-    // Also disconnect socket or leave room?
-    // For simplicity, a reload is the cleanest 'exit' but user asked to fix the button 
-    // without implying refresh. Reloading (window.location.reload()) is definitely a "Back" action.
-    // The previous code was: window.location.href = "/";
-    // If that wasn't working, maybe it was just slow?
-    // Let's make it instant UI switch + leave room emit
-
-    // We actually need to reload to cleanly reset socket state and avoid lingering connections
-    // in this simple architecture.
-    window.location.reload();
+    
+    // Clear State
+    roomId = null;
+    gameState = null;
+    mySide = null;
+    
+    // Restart Socket to ensure server state is cleared for this user
+    socket.disconnect();
+    socket.connect();
 });
 
 // QR Scanner Logic

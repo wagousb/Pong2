@@ -175,10 +175,13 @@ button {
     border: none;
     font-size: 1.5rem;
     width: auto;
-    padding: 0 10px;
-    cursor: pointer;
-    font-family: inherit;
-    font-weight: bold;
+    padding: 10px; /* Larger touch target */
+    min-width: 44px; /* Minimum recommended touch size */
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000; /* Force on top */
 }
 
 .close-btn:hover {
