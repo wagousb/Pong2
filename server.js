@@ -33,13 +33,14 @@ io.on('connection', (socket) => {
     socket.on('create_game', (data) => {
         const roomName = data && data.roomName ? data.roomName.trim().substring(0, 15) : null;
         const mode = (data && data.mode) || 'remote';
+        const playerName = (data && data.playerName) ? data.playerName.substring(0, 15) : 'JOGADOR 1';
         const roomId = Math.random().toString(36).substring(2, 7);
 
         games[roomId] = {
             name: roomName || `SALA ${roomId.toUpperCase()}`,
             mode: mode, // 'nearby' or 'remote'
             players: {
-                [socket.id]: { side: 'bottom', x: 50, score: 0, width: 20 }
+                [socket.id]: { side: 'bottom', x: 50, score: 0, width: 20, name: playerName }
             },
             ball: { x: 50, y: 100, dx: 0, dy: 0, lastHitBy: null },
             status: 'waiting'
@@ -49,21 +50,47 @@ io.on('connection', (socket) => {
         sendRoomsList(); // Broadcast update
     });
 
-    socket.on('join_game', (roomId) => {
-        const game = games[roomId];
-        if (game && Object.keys(game.players).length < 2) {
-            game.players[socket.id] = { side: 'top', x: 50, score: 0, width: 20 };
-            game.status = 'playing';
-            // Reset ball
-            game.ball = { x: 50, y: 100, dx: (Math.random() > 0.5 ? 1 : -1) * 0.5, dy: (Math.random() > 0.5 ? 1 : -1) * 0.5 };
-
-            socket.join(roomId);
-            socket.emit('game_joined', { roomId, side: 'top', mode: game.mode });
-            io.to(roomId).emit('game_start', game);
-            startGameLoop(roomId);
-            sendRoomsList(); // Broadcast update
+    socket.on('join_game', (data) => {
+        // Data can be just roomId (string) or object {roomId, playerName}
+        // Handle both for backward compatibility or robust parsing
+        let roomId, playerName;
+        if (typeof data === 'object') {
+            roomId = data.roomId;
+            playerName = data.playerName || 'VIAJANTE';
         } else {
-            socket.emit('error_msg', 'Room full or does not exist');
+            roomId = data;
+            playerName = 'VIAJANTE';
+        }
+
+        const game = games[roomId];
+        if (game) {
+            const playerCount = Object.keys(game.players).length;
+
+            if (playerCount < 2) {
+                // Join as Player 2
+                game.players[socket.id] = { side: 'top', x: 50, score: 0, width: 20, name: playerName };
+                game.status = 'playing';
+                // Reset ball
+                game.ball = { x: 50, y: 100, dx: (Math.random() > 0.5 ? 1 : -1) * 0.5, dy: (Math.random() > 0.5 ? 1 : -1) * 0.5 };
+
+                socket.join(roomId);
+                socket.emit('game_joined', { roomId, side: 'top', mode: game.mode, role: 'player' });
+                io.to(roomId).emit('game_start', game);
+                startGameLoop(roomId);
+                sendRoomsList(); // Broadcast update
+            } else {
+                // Join as Spectator
+                socket.join(roomId);
+                socket.emit('game_joined', { roomId, side: 'spectator', mode: game.mode, role: 'spectator' });
+                // If game is already running, send current state
+                if (game.status === 'playing') {
+                    socket.emit('game_update', game);
+                    // Also send static game_start info so client can init
+                    socket.emit('game_start', game);
+                }
+            }
+        } else {
+            socket.emit('error_msg', 'Room does not exist');
         }
     });
 
@@ -101,11 +128,12 @@ io.on('connection', (socket) => {
 
 function sendRoomsList(target = io) {
     const list = Object.entries(games)
-        .filter(([id, game]) => game.status === 'waiting')
+        // .filter(([id, game]) => game.status === 'waiting') // Removed filter to allow spectating active games
         .map(([id, game]) => ({
             id,
             name: game.name,
-            playerCount: Object.keys(game.players).length
+            playerCount: Object.keys(game.players).length,
+            status: game.status
         }));
     target.emit('rooms_update', list);
 }
@@ -210,6 +238,29 @@ function startGameLoop(roomId) {
             resetBall(game, -1);
             speedMultiplier = 1.0;
             lastSpeedUpdate = Date.now();
+        }
+
+        // Check Win Condition (First to 10)
+        const p1 = Object.values(game.players).find(p => p.side === 'bottom');
+        const p2 = Object.values(game.players).find(p => p.side === 'top');
+
+        if (p1 && p2) {
+            if (p1.score >= 10 || p2.score >= 10) {
+                game.status = 'finished';
+                const winnerId = p1.score >= 10 ? Object.keys(game.players).find(k => game.players[k] === p1) : Object.keys(game.players).find(k => game.players[k] === p2);
+                game.winner = game.players[winnerId].name;
+                io.to(roomId).emit('game_over', {
+                    game: game,
+                    winnerSide: p1.score >= 10 ? 'bottom' : 'top',
+                    winnerName: game.winner
+                });
+                clearInterval(interval);
+                // Optional: Clean up game after a delay
+                setTimeout(() => {
+                    delete games[roomId];
+                }, 10000);
+                return;
+            }
         }
 
         io.to(roomId).emit('game_update', game);

@@ -19,6 +19,99 @@ const remoteRoomCode = document.getElementById('remote-room-code');
 const copyCodeBtn = document.getElementById('copy-code-btn');
 const remoteBackBtn = document.getElementById('remote-back-btn');
 
+// Menu Navigation Elements
+const menuMain = document.getElementById('menu-main');
+const menuCreate = document.getElementById('menu-create');
+const menuJoin = document.getElementById('menu-join');
+const mainLayout = document.querySelector('.main-layout-container');
+
+const btnShowCreate = document.getElementById('btn-show-create');
+const btnShowJoin = document.getElementById('btn-show-join');
+const createConfirmBtn = document.getElementById('create-confirm-btn');
+const joinConfirmBtn = document.getElementById('join-confirm-btn');
+const backToMainFromCreate = document.getElementById('back-to-main-from-create');
+const backToMainFromJoin = document.getElementById('back-to-main-from-join');
+
+// Identity & Ranking & History
+const playerIdentityInput = document.getElementById('player-identity');
+const rankingBtn = document.getElementById('ranking-btn');
+const rankingModal = document.getElementById('ranking-modal');
+const closeRankingBtn = document.getElementById('close-ranking');
+const rankingList = document.getElementById('ranking-list');
+
+const historyBtn = document.getElementById('history-btn');
+const historyModal = document.getElementById('history-modal');
+const closeHistoryBtn = document.getElementById('close-history');
+const historyList = document.getElementById('history-list');
+
+// Welcome / Nickname UI
+const nicknameInputGroup = document.getElementById('nickname-input-group');
+const welcomeContainer = document.getElementById('welcome-container');
+const welcomeNickname = document.getElementById('welcome-nickname');
+const changeNickBtn = document.getElementById('change-nick-btn');
+
+// Supabase Config
+// TODO: USER MUST REPLACE THIS URL WITH THEIR ACTUAL SUPABASE PROJECT URL
+const SUPABASE_URL = 'https://jqyydhlsqkdfbvldyxbv.supabase.co';
+// Using the provided Publishable API Key
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxeXlkaGxzcWtkZmJ2bGR5eGJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyNTQyMzUsImV4cCI6MjA4NTgzMDIzNX0.SG_hG4WSBYIf27nOvhk4KIyctcSmzeg8QemO3FA0d5M';
+
+let supabaseClient = null;
+
+if (typeof supabase !== 'undefined') {
+    try {
+        // If the user provided a secret that actually acts as a key (self-hosted?), we try it.
+        // But usually we need the URL.
+        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        console.log("Supabase initialized (verify URL/Key in game.js if it fails)");
+    } catch (e) {
+        console.error("Supabase init failed:", e);
+    }
+}
+
+// Nickname Management
+let currentPlayerName = '';
+
+function loadNickname() {
+    const storedNick = localStorage.getItem('pong2_nickname');
+    if (storedNick) {
+        currentPlayerName = storedNick;
+        showWelcome(storedNick);
+        playerIdentityInput.value = storedNick;
+    } else {
+        showInput();
+    }
+}
+
+function saveNickname(name) {
+    if (!name) return;
+    localStorage.setItem('pong2_nickname', name);
+    currentPlayerName = name;
+    showWelcome(name);
+}
+
+function showWelcome(name) {
+    if (nicknameInputGroup) nicknameInputGroup.classList.add('hidden');
+    if (welcomeContainer) welcomeContainer.classList.remove('hidden');
+    if (welcomeNickname) welcomeNickname.innerText = name;
+}
+
+function showInput() {
+    if (nicknameInputGroup) nicknameInputGroup.classList.remove('hidden');
+    if (welcomeContainer) welcomeContainer.classList.add('hidden');
+    if (playerIdentityInput) playerIdentityInput.value = '';
+    setTimeout(() => playerIdentityInput.focus(), 100);
+}
+
+if (changeNickBtn) {
+    changeNickBtn.addEventListener('click', () => {
+        showInput();
+    });
+}
+
+// Initial Load
+loadNickname();
+
 let mySide = null; // 'bottom' or 'top'
 let roomId = null;
 let gameState = null;
@@ -75,22 +168,66 @@ const roomsList = document.getElementById('rooms-list');
 const roomsListContainer = document.getElementById('rooms-list-container');
 
 // UI Handlers
-createBtn.addEventListener('click', () => {
+// Navigation Handlers
+btnShowCreate.addEventListener('click', () => {
+    menuMain.classList.add('hidden');
+    menuCreate.classList.remove('hidden');
+});
+
+btnShowJoin.addEventListener('click', () => {
+    menuMain.classList.add('hidden');
+    menuJoin.classList.remove('hidden');
+    socket.emit('get_rooms'); // Refresh rooms when opening
+});
+
+backToMainFromCreate.addEventListener('click', () => {
+    menuCreate.classList.add('hidden');
+    menuMain.classList.remove('hidden');
+});
+
+backToMainFromJoin.addEventListener('click', () => {
+    menuJoin.classList.add('hidden');
+    menuMain.classList.remove('hidden');
+});
+
+
+// Action Handlers
+createConfirmBtn.addEventListener('click', () => {
     const roomName = customRoomNameInput.value.trim();
     const mode = document.querySelector('input[name="game-mode"]:checked').value;
 
-    // FORÇAR MODO REMOTO NA VARIÁVEL LOCAL
-    isRemoteMode = (mode === 'remote');
-    console.log("BOTÃO CRIAR CLICADO. MODO ESCOLHIDO:", mode);
+    // Use input value if visible, otherwise current stored name
+    let playerNameInput = playerIdentityInput.value.trim();
+    if (!nicknameInputGroup.classList.contains('hidden')) {
+        // Input is visible, use it and save it
+        if (playerNameInput) saveNickname(playerNameInput);
+    }
 
-    socket.emit('create_game', { roomName, mode });
+    // Fallback
+    const playerName = playerNameInput || currentPlayerName || 'JOGADOR 1';
+
+    // Ensure we save it if it wasn't saved yet
+    if (playerName && playerName !== currentPlayerName) saveNickname(playerName);
+
+    // FORÇAR MODO REMOTO NA VARIÁVEL LOCAL (ou nearby se escolhido)
+    isRemoteMode = (mode === 'remote');
+
+    socket.emit('create_game', { roomName, mode, playerName });
 });
 
-joinBtn.addEventListener('click', () => {
+joinConfirmBtn.addEventListener('click', () => {
     const code = roomInput.value.trim();
+
+    let playerNameInput = playerIdentityInput.value.trim();
+    if (!nicknameInputGroup.classList.contains('hidden')) {
+        if (playerNameInput) saveNickname(playerNameInput);
+    }
+    const playerName = playerNameInput || currentPlayerName || 'JOGADOR 2';
+
     if (code) {
-        isRemoteMode = true; // Joining via code is remote mode
-        socket.emit('join_game', code);
+        // We assume remote/spectate mainly for code join
+        isRemoteMode = true;
+        socket.emit('join_game', { roomId: code, playerName });
     }
 });
 
@@ -106,13 +243,25 @@ socket.on('rooms_update', (rooms) => {
     rooms.forEach(room => {
         const roomElem = document.createElement('div');
         roomElem.className = 'room-item';
+
+        const isFull = room.playerCount >= 2;
+        const actionText = isFull ? 'ASSISTIR' : 'ENTRAR';
+        const statusClass = isFull ? 'spectate' : 'join';
+
         roomElem.innerHTML = `
             <span class="room-name">${room.name}</span>
-            <span class="room-status">ENTRAR</span>
+            <span class="room-status ${statusClass}">${actionText}</span>
         `;
         roomElem.addEventListener('click', () => {
             isRemoteMode = true; // Joining via list is remote mode
-            socket.emit('join_game', room.id);
+
+            let playerNameInput = playerIdentityInput.value.trim();
+            if (!nicknameInputGroup.classList.contains('hidden')) {
+                if (playerNameInput) saveNickname(playerNameInput);
+            }
+            const playerName = playerNameInput || currentPlayerName || 'JOGADOR 2';
+
+            socket.emit('join_game', { roomId: room.id, playerName });
         });
         roomsList.appendChild(roomElem);
     });
@@ -123,10 +272,33 @@ soloBtn.addEventListener('click', (e) => {
     startSoloMode();
 });
 
+// New Record Elements
+const newRecordModal = document.getElementById('new-record-modal');
+const newRecordValue = document.getElementById('new-record-value');
+const recordPlayerName = document.getElementById('record-player-name');
+const closeRecordBtn = document.getElementById('close-record-btn');
+
+let currentBestScore = 0;
+let isRecordModalOpen = false;
+
+if (closeRecordBtn) {
+    closeRecordBtn.addEventListener('click', () => {
+        newRecordModal.classList.add('hidden');
+        isRecordModalOpen = false;
+        // Reset ball immediately on close to avoid instant death if logic was paused weirdly
+        if (gameState && gameState.ball) {
+            gameState.ball.y = 50;
+            gameState.ball.dy = 0.5;
+        }
+        startSoloLoop(); // Restart loop
+    });
+}
+
 function startSoloMode() {
     isSoloMode = true;
     mySide = 'bottom';
-    menu.classList.add('hidden');
+    if (mainLayout) mainLayout.classList.add('hidden');
+
     const scoreContainer = document.getElementById('score-container');
     scoreContainer.classList.remove('hidden');
     scoreContainer.classList.add('solo-mode');
@@ -146,7 +318,37 @@ function startSoloMode() {
     // Stop socket just in case
     socket.disconnect();
 
+    // Fetch previous best
+    const name = currentPlayerName || 'ANÔNIMO';
+    fetchPersonalBest(name);
+
     startSoloLoop();
+}
+
+async function fetchPersonalBest(name) {
+    if (!supabaseClient) return;
+    try {
+        const { data, error } = await supabaseClient
+            .from('solo_scores')
+            .select('score')
+            .eq('name', name)
+            .order('score', { ascending: false })
+            .limit(1);
+
+        if (error) {
+            console.error("Error fetching request:", error);
+            return;
+        }
+
+        if (data && data.length > 0) {
+            currentBestScore = data[0].score;
+            console.log("Current Best:", currentBestScore);
+        } else {
+            currentBestScore = 0;
+        }
+    } catch (e) {
+        console.error("Fetch best ex:", e);
+    }
 }
 
 function startSoloLoop() {
@@ -160,6 +362,9 @@ function startSoloLoop() {
             clearInterval(soloInterval);
             return;
         }
+
+        // Pause if modal is open
+        if (isRecordModalOpen) return;
 
         // Increase speed
         if (Date.now() - lastSpeedUpdate > 5000) {
@@ -179,7 +384,7 @@ function startSoloLoop() {
             ball.dx *= -1;
         }
 
-        // Ceiling Collision (The User wants the ball to bounce back)
+        // Ceiling Collision
         if (ball.y >= 98) {
             ball.y = 98;
             ball.dy *= -1;
@@ -203,8 +408,6 @@ function startSoloLoop() {
                 SFX.hit();
                 triggerVibrate(30);
 
-                // Add point for hitting the paddle in solo mode?
-                // Or just keep the score for how many times you hit it?
                 player.score += 1;
                 scoreElem.innerText = player.score;
             }
@@ -213,18 +416,41 @@ function startSoloLoop() {
         // Death
         if (ball.y < -5) {
             triggerVibrate(200);
+
+            // Check Record Logic
+            if (player.score > currentBestScore && player.score > 0) {
+                // NEW RECORD!
+                currentBestScore = player.score;
+
+                // Show Modal
+                isRecordModalOpen = true;
+                newRecordValue.innerText = currentBestScore;
+                recordPlayerName.innerText = currentPlayerName || 'JOGADOR';
+                newRecordModal.classList.remove('hidden');
+                SFX.powerup(); // Victory sound
+            }
+
+            // SAVE SCORE logic
+            if (player.score > 0) {
+                const nameToSave = currentPlayerName || 'ANÔNIMO';
+                saveSoloScore(nameToSave, player.score);
+            }
+
             // Reset ball
             ball.x = 50;
             ball.y = 50;
             ball.dx = (Math.random() > 0.5 ? 1 : -1) * 0.5;
             ball.dy = 0.5;
-            // Update trackers immediately to prevent ghost collision sound
+
+            // If modal is open, we don't reset vars yet, wait for continue
+            // But we do need to reset score for next round
+            player.score = 0;
+            scoreElem.innerText = "0";
+
             lastBallDx = ball.dx;
             lastBallDy = ball.dy;
             speedMultiplier = 1.0;
             lastSpeedUpdate = Date.now();
-            player.score = 0;
-            scoreElem.innerText = "0";
         }
 
     }, 1000 / 60);
@@ -237,7 +463,11 @@ socket.on('game_created', (data) => {
     isRemoteMode = (data.mode === 'remote');
     console.log("Room created! Mode:", data.mode);
 
-    menu.classList.add('hidden');
+    // Hide all menu sub-views
+    menuMain.classList.add('hidden');
+    menuCreate.classList.add('hidden');
+    menuJoin.classList.add('hidden');
+    if (mainLayout) mainLayout.classList.add('hidden');
 
     if (isRemoteMode) {
         // Show Remote Waiting Screen
@@ -266,12 +496,24 @@ socket.on('game_created', (data) => {
 socket.on('game_joined', (data) => {
     roomId = data.roomId;
     mySide = data.side;
-    isRemoteMode = (data.mode === 'remote');
+    isRemoteMode = (data.mode === 'remote'); // Force remote mode if joining remote room
+
+    if (data.role === 'spectator') {
+        console.log("Joined as Spectator");
+        statusMsg.innerText = "VOCÊ ESTÁ ASSISTINDO A PARTIDA";
+        isRemoteMode = true; // Spectators always see full arena
+    }
 
     // Start immediately
-    menu.classList.add('hidden');
+    menuMain.classList.add('hidden');
+    menuCreate.classList.add('hidden');
+    menuJoin.classList.add('hidden');
+    if (mainLayout) mainLayout.classList.add('hidden');
+
     waitingScreen.classList.add('hidden');
     remoteWaitingScreen.classList.add('hidden');
+
+    // As spectator, we might jump straight to game view if game is running
 });
 
 // Auto-Join if room param exists
@@ -297,7 +539,12 @@ function handleBack(e) {
     remoteWaitingScreen.classList.add('hidden');
     document.getElementById('score-container').classList.add('hidden');
     document.getElementById('score-container').classList.remove('solo-mode');
-    menu.classList.remove('hidden');
+
+    // Show Main Menu, Reset Sub Menus
+    menuMain.classList.remove('hidden');
+    menuCreate.classList.add('hidden');
+    menuJoin.classList.add('hidden');
+    if (mainLayout) mainLayout.classList.remove('hidden');
 
     // Clear Local State
     roomId = null;
@@ -372,7 +619,9 @@ scanBtn.addEventListener('click', () => {
 
             roomInput.value = code;
             isRemoteMode = false; // Scanning QR is always nearby/split-screen mode
-            socket.emit('join_game', code);
+
+            const playerName = currentPlayerName || 'JOGADOR 2'; // Assume stored if scanning
+            socket.emit('join_game', { roomId: code, playerName });
             stopScanner();
         },
         (errorMessage) => {
@@ -477,8 +726,14 @@ socket.on('game_start', (state) => {
 
     waitingScreen.classList.add('hidden');
     remoteWaitingScreen.classList.add('hidden');
-    menu.classList.add('hidden');
+
+    menuMain.classList.add('hidden');
+    menuCreate.classList.add('hidden');
+    menuJoin.classList.add('hidden');
+    if (mainLayout) mainLayout.classList.add('hidden');
+
     document.getElementById('score-container').classList.remove('hidden');
+    statusMsg.innerText = "";
 
     SFX.score();
     lastBallDx = state.ball.dx;
@@ -533,6 +788,10 @@ socket.on('game_update', (state) => {
 });
 
 socket.on('player_disconnected', () => {
+    // Current player saves the result (assuming they won by forfeit or just saving state)
+    if (gameState && isRemoteMode) {
+        saveOnlineMatchOnDisconnect();
+    }
     document.getElementById('disconnect-modal').classList.remove('hidden');
     // We don't reload immediately anymore, the button in the modal handles it
 });
@@ -734,3 +993,181 @@ function render() {
 }
 
 requestAnimationFrame(render);
+
+/* RANKING & SUPABASE LOGIC */
+
+if (rankingBtn) {
+    rankingBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        rankingModal.classList.remove('hidden');
+        fetchRanking();
+    });
+}
+
+if (closeRankingBtn) {
+    closeRankingBtn.addEventListener('click', () => {
+        rankingModal.classList.add('hidden');
+    });
+}
+
+if (historyBtn) {
+    historyBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        historyModal.classList.remove('hidden');
+        fetchHistory();
+    });
+}
+
+if (closeHistoryBtn) {
+    closeHistoryBtn.addEventListener('click', () => {
+        historyModal.classList.add('hidden');
+    });
+}
+
+async function saveSoloScore(name, score) {
+    if (!supabaseClient) return;
+    try {
+        console.log(`Saving solo score: ${name} - ${score}`);
+        const { error } = await supabaseClient
+            .from('solo_scores')
+            .insert([{ name: name, score: score }]);
+
+        if (error) console.error("Error saving score:", error);
+        else console.log("Score saved!");
+    } catch (err) {
+        console.error("Save ex:", err);
+    }
+}
+
+async function fetchRanking() {
+    if (!rankingList) return;
+    rankingList.innerHTML = '<li>CARREGANDO...</li>';
+    if (!supabaseClient) {
+        rankingList.innerHTML = '<li>ERRO: CONFIG SUPABASE</li>';
+        return;
+    }
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('solo_scores')
+            .select('name, score')
+            .order('score', { ascending: false })
+            .limit(10);
+
+        if (error) throw error;
+
+        rankingList.innerHTML = '';
+        if (!data || data.length === 0) {
+            rankingList.innerHTML = '<li>SEM PLACARES AINDA</li>';
+            return;
+        }
+
+        data.forEach((entry, index) => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <span class="rank">#${index + 1}</span>
+                <span class="name">${entry.name || 'ANÔNIMO'}</span>
+                <span class="score">${entry.score}</span>
+            `;
+            rankingList.appendChild(li);
+        });
+
+    } catch (err) {
+        console.error("Fetch ranking error:", err);
+        rankingList.innerHTML = '<li>ERRO AO BUSCAR</li>';
+    }
+}
+
+async function fetchHistory() {
+    if (!historyList) return;
+    historyList.innerHTML = '<li>CARREGANDO...</li>';
+    if (!supabaseClient) {
+        historyList.innerHTML = '<li>ERRO: CONFIG SUPABASE</li>';
+        return;
+    }
+
+    try {
+        // Fetch last 10 global matches
+        const { data, error } = await supabaseClient
+            .from('online_matches')
+            .select('player1, score1, player2, score2, winner, timestamp')
+            .order('timestamp', { ascending: false })
+            .limit(10);
+
+        if (error) throw error;
+
+        historyList.innerHTML = '';
+        if (!data || data.length === 0) {
+            historyList.innerHTML = '<li>SEM PARTIDAS AINDA</li>';
+            return;
+        }
+
+        data.forEach((match) => {
+            const li = document.createElement('li');
+
+            const date = new Date(match.timestamp).toLocaleDateString('pt-BR');
+
+            const p1Bold = match.winner === match.player1 ? 'color: var(--fg); font-weight: bold;' : 'opacity: 0.7;';
+            const p2Bold = match.winner === match.player2 ? 'color: var(--fg); font-weight: bold;' : 'opacity: 0.7;';
+
+            li.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 5px; font-size: 0.8rem;">
+                    <span style="${p1Bold}">${match.player1} <small>(${match.score1})</small></span>
+                    <span style="opacity: 0.4;">x</span>
+                    <span style="${p2Bold}">${match.player2} <small>(${match.score2})</small></span>
+                </div>
+                <span style="font-size: 0.6rem; opacity: 0.5; white-space: nowrap;">${date}</span>
+            `;
+            historyList.appendChild(li);
+        });
+
+    } catch (err) {
+        console.error("Fetch history error:", err);
+        historyList.innerHTML = '<li>ERRO AO BUSCAR</li>';
+    }
+}
+
+async function saveOnlineMatchOnDisconnect() {
+    if (!supabaseClient || !gameState) return;
+
+    // Identify players
+    const myId = Object.keys(gameState.players).find(id => gameState.players[id].side === mySide);
+    const theirSide = mySide === 'bottom' ? 'top' : 'bottom';
+    const theirId = Object.keys(gameState.players).find(id => gameState.players[id].side === theirSide);
+
+    const myPlayer = gameState.players[myId];
+    // theirPlayer logic: try to find it, but if it's gone from state, we rely on what we have.
+    // If this function is called, gameState implies we have the state.
+    const theirPlayer = gameState.players[theirId];
+
+    if (myPlayer) {
+        const myName = myPlayer.name || (mySide === 'bottom' ? 'JOGADOR 1' : 'JOGADOR 2');
+        const myScore = myPlayer.score;
+
+        let theirName = 'OPONENTE';
+        let theirScore = 0;
+
+        if (theirPlayer) {
+            theirName = theirPlayer.name || 'OPONENTE';
+            theirScore = theirPlayer.score;
+        }
+
+        console.log(`Saving match: ${myName} (${myScore}) vs ${theirName} (${theirScore})`);
+
+        try {
+            await supabaseClient
+                .from('online_matches')
+                .insert([{
+                    player1: myName,
+                    score1: myScore,
+                    player2: theirName,
+                    score2: theirScore,
+                    winner: (myScore > theirScore) ? myName : ((theirScore > myScore) ? theirName : 'EMPATE'),
+                    timestamp: new Date().toISOString()
+                }]);
+            console.log("Online match saved");
+        } catch (e) {
+            console.error("Error saving match:", e);
+        }
+    }
+}

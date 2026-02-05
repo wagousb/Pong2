@@ -84,7 +84,10 @@ body {
     z-index: 10;
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
+    /* Align top so we can use margin-top on container */
+    overflow-y: auto;
+    /* Allow scrolling if content is too tall */
     pointer-events: none;
 }
 
@@ -111,16 +114,14 @@ body {
 }
 
 h1 {
-    font-size: 3rem;
+    font-size: 3.5rem;
+    /* Reduced from 3rem */
     margin: 0;
     line-height: 1.2;
     font-family: 'Press Start 2P', cursive;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.5rem;
     position: relative;
     display: inline-block;
-    /* Needed for ::after positioning relative to text width */
-    margin-bottom: 0.5rem;
-    /* Reduced space to subtitle */
 }
 
 /* The "Paddle" */
@@ -128,24 +129,21 @@ h1::after {
     content: '';
     display: block;
     width: 100%;
-    height: 20px;
-    /* Thicker paddle */
+    height: 10px;
+    /* Thinner paddle */
     background-color: var(--fg);
-    margin-top: 2px;
-    /* Closer relative to text */
+    margin-top: 4px;
 }
 
 .square-o {
     display: inline-block;
-    width: 0.95em;
-    /* Match letter block size */
-    height: 0.95em;
+    width: 0.8em;
+    height: 0.8em;
     background-color: var(--fg);
-    margin: 0 0.25em 0 0.05em;
-    /* Closer to P (left), standard to N (right) */
+    margin: 0 0.15em;
     vertical-align: middle;
     position: relative;
-    top: -0.15em;
+    top: -0.1em;
     /* Pixelated/Stepped Corners */
     clip-path: polygon(0% 15%,
             15% 15%, 15% 0%,
@@ -157,10 +155,13 @@ h1::after {
 }
 
 .subtitle {
-    font-size: 1rem;
-    margin-bottom: 2rem;
+    font-size: 0.8rem;
+    /* Reduced from 1rem */
+    margin-bottom: 0;
+    /* Remove bottom margin to just sit under title */
     font-weight: normal;
-    letter-spacing: 5px;
+    letter-spacing: 8px;
+    opacity: 0.8;
 }
 
 .menu-card {
@@ -177,8 +178,10 @@ button {
     background: var(--fg);
     color: var(--bg);
     border: none;
-    padding: 1rem 2rem;
-    font-size: 1.2rem;
+    padding: 0.8rem 1rem;
+    /* Compact padding */
+    font-size: 0.9rem;
+    /* Reduced font size */
     font-family: inherit;
     font-weight: bold;
     cursor: pointer;
@@ -193,10 +196,13 @@ button {
 #solo-btn {
     color: var(--fg);
     text-decoration: none;
-    font-size: 0.9rem;
-    opacity: 0.6;
+    font-size: 0.8rem;
+    opacity: 0.8;
     transition: opacity 0.2s;
     border-bottom: 1px solid transparent;
+    display: block;
+    /* Make it block to separate better */
+    margin-bottom: 5px;
 }
 
 #solo-btn:hover {
@@ -241,21 +247,27 @@ button {
 }
 
 input {
-    background: transparent;
-    border: 2px solid var(--fg);
+    background: rgba(255, 255, 255, 0.05);
+    /* Slight tint to separate from bg */
+    border: none;
+    border-bottom: 2px solid var(--fg);
+    /* Only bottom border like a form line */
     color: var(--fg);
-    padding: 0.8rem;
-    font-size: 1.2rem;
-    font-family: inherit;
+    padding: 0.6rem;
+    font-size: 0.9rem;
+    font-family: 'Press Start 2P', cursive;
     text-align: center;
     text-transform: uppercase;
     width: 100%;
-    /* Match button width */
     box-sizing: border-box;
-    /* Include padding in width */
     margin-bottom: 0.5rem;
-    /* keep default margin for non-grouped inputs if any */
     display: block;
+    transition: background 0.2s;
+}
+
+input:focus {
+    background: rgba(255, 255, 255, 0.15);
+    outline: none;
 }
 
 input::placeholder {
@@ -529,6 +541,59 @@ input::placeholder {
     }
 }
 
+/* New Record Modal */
+#new-record-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 300;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: auto;
+}
+
+.celebration-card {
+    border: 4px solid var(--fg);
+    background: var(--bg);
+    padding: 2rem;
+    text-align: center;
+    box-shadow: 0 0 20px #ffff00;
+    animation: pop-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    max-width: 90%;
+    width: 350px;
+}
+
+.celebration-card h2 {
+    color: #ffff00;
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+    text-shadow: 2px 2px 0px #ff0000;
+}
+
+.record-score {
+    font-size: 4rem;
+    font-family: 'Press Start 2P', cursive;
+    color: var(--fg);
+    margin: 1rem 0;
+    display: block;
+}
+
+@keyframes pop-in {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
 /* Room List Styles */
 #custom-room-name {
     margin-bottom: 10px;
@@ -549,6 +614,48 @@ input::placeholder {
     color: var(--fg);
     margin-bottom: 1rem;
     opacity: 0.8;
+}
+
+#menu-main {
+    position: relative;
+    /* Context for absolute positioning if desired, but flex works too */
+}
+
+.menu-icons-row {
+    position: static;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 1.5rem;
+    /* Space below Solo button */
+}
+
+.icon-btn {
+    background: #000000;
+    border: 2px solid var(--fg);
+    color: var(--fg);
+    padding: 5px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 3px 3px 0px var(--gray);
+    /* Subtle shadow */
+}
+
+.icon-btn:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0px var(--gray);
+    /* Pressed effect */
+}
+
+.icon-btn svg {
+    /* Ensure icon fits well */
+    width: 20px;
+    height: 20px;
 }
 
 #rooms-list {
@@ -769,4 +876,139 @@ input::placeholder {
     100% {
         left: 100%;
     }
+}
+
+/* Game Header */
+#game-header {
+    width: 100%;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.main-layout-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 90%;
+    max-width: 400px;
+    margin-top: 5vh;
+}
+
+#menu {
+    margin-top: 0;
+    /* Handled by container flex */
+    padding: 0;
+    width: 100%;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+}
+
+#menu-main,
+#menu-create,
+#menu-join {
+    width: 100%;
+    border: 4px solid var(--fg);
+    box-shadow: 10px 10px 0px var(--gray);
+    padding: 1.5rem;
+    background: var(--bg);
+    box-sizing: border-box;
+    /* margin-top: 20px; Removed since icons are now in footer */
+}
+
+.view-title {
+    font-family: 'Press Start 2P', cursive;
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+    color: var(--fg);
+    border-bottom: 2px dashed var(--fg);
+    padding-bottom: 0.5rem;
+}
+
+.back-link-btn {
+    background: transparent;
+    color: var(--fg);
+    border: 1px solid var(--fg);
+    margin-top: 1rem;
+    font-size: 0.7rem;
+    padding: 0.5rem;
+}
+
+/* Ranking & History Modals */
+#ranking-modal,
+#history-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 200;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: auto;
+}
+
+.ranking-content {
+    border: 4px solid var(--fg);
+    background: var(--bg);
+    padding: 1.5rem;
+    width: 90%;
+    max-width: 400px;
+    max-height: 70vh;
+    overflow-y: auto;
+    text-align: center;
+    box-shadow: 10px 10px 0px var(--gray);
+}
+
+.ranking-content h2 {
+    font-family: 'Press Start 2P', cursive;
+    margin-bottom: 2rem;
+    color: var(--fg);
+    font-size: 1.5rem;
+    border-bottom: 2px solid var(--gray);
+    padding-bottom: 1rem;
+}
+
+#ranking-list,
+#history-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+#ranking-list li,
+#history-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    /* Ensure vertical alignment */
+    padding: 1rem 0;
+    border-bottom: 1px dashed var(--gray);
+}
+
+#ranking-list li:last-child,
+#history-list li:last-child {
+    border-bottom: none;
+}
+
+#ranking-list span.rank {
+    color: var(--fg);
+    margin-right: 1rem;
+}
+
+#ranking-list span.name {
+    flex-grow: 1;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#ranking-list span.score {
+    color: var(--fg);
 }

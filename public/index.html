@@ -24,58 +24,116 @@
     </div>
 
     <div id="ui-layer">
-        <div id="menu">
-            <h1>P<span class="square-o"></span>NG2</h1>
-            <h2 class="subtitle">MULTIPLAY & ONLINE</h2>
-
-            <div class="menu-card">
-                <input type="text" id="custom-room-name" placeholder="NOME DA SALA (OPCIONAL)" maxlength="15">
-
-                <div class="mode-selector">
-                    <label class="mode-option">
-                        <input type="radio" name="game-mode" value="nearby">
-                        <span class="mode-btn">JUNTOS</span>
-                    </label>
-                    <label class="mode-option">
-                        <input type="radio" name="game-mode" value="remote" checked>
-                        <span class="mode-btn">À DISTÂNCIA</span>
-                    </label>
-                </div>
-
-                <button id="create-btn">CRIE UMA SALA</button>
+        <div class="main-layout-container">
+            <div id="game-header">
+                <h1>P<span class="square-o"></span>NG2</h1>
+                <h2 class="subtitle">MULTIPLAY & ONLINE</h2>
             </div>
 
-            <div id="rooms-list-container" class="menu-card hidden">
-                <h3 class="list-title">SALAS DISPONÍVEIS</h3>
-                <div id="rooms-list">
-                    <!-- Rooms will be added here -->
+            <div id="menu">
+                <!-- MAIN MENU VIEW -->
+                <div id="menu-main">
+                    <div class="menu-card">
+                        <div id="nickname-input-group">
+                            <input type="text" id="player-identity" placeholder="CRIE SEU NICKNAME" maxlength="15">
+                        </div>
+                        <div id="welcome-container" class="hidden"
+                            style="display: flex; flex-direction: column; gap: 5px; align-items: center;">
+                            <div style="font-size: 0.8rem; color: var(--fg); opacity: 0.8;">BEM VINDO DE VOLTA,</div>
+                            <div id="welcome-nickname"
+                                style="font-family: 'Press Start 2P', cursive; font-size: 1.2rem; color: #ffff00; margin-bottom: 5px;">
+                                PLAYER</div>
+                            <button id="change-nick-btn"
+                                style="background: transparent; border: 1px dashed var(--fg); font-size: 0.6rem; padding: 5px; width: auto;">ALTERAR</button>
+                        </div>
+                    </div>
+
+                    <button id="btn-show-create">CRIE UMA SALA</button>
+                    <div style="height: 10px;"></div>
+                    <button id="btn-show-join">ENTRAR EM UMA SALA</button>
+
+                    <div class="menu-footer">
+                        <a href="#" id="solo-btn">JOGUE SOZINHO</a>
+
+                        <div class="menu-icons-row">
+                            <!-- Ranking Button -->
+                            <button id="ranking-btn" class="icon-btn" title="Ranking Top 10">
+                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+                                    <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+                                    <path d="M4 22h16"></path>
+                                    <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path>
+                                    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path>
+                                    <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
+                                </svg>
+                            </button>
+                            <!-- Histórico Button -->
+                            <button id="history-btn" class="icon-btn" title="Histórico de Partidas">
+                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CREATE ROOM VIEW -->
+                <div id="menu-create" class="hidden">
+                    <h3 class="view-title">CRIAR SALA</h3>
+
+                    <div class="menu-card">
+                        <input type="text" id="custom-room-name" placeholder="NOME DA SALA" maxlength="15">
+
+                        <div class="mode-selector">
+                            <label class="mode-option">
+                                <input type="radio" name="game-mode" value="nearby">
+                                <span class="mode-btn">JUNTOS</span>
+                            </label>
+                            <label class="mode-option">
+                                <input type="radio" name="game-mode" value="remote" checked>
+                                <span class="mode-btn">À DISTÂNCIA</span>
+                            </label>
+                        </div>
+
+                        <button id="create-confirm-btn">CRIAR AGORA</button>
+                        <button class="back-link-btn" id="back-to-main-from-create">VOLTAR</button>
+                    </div>
+                </div>
+
+                <!-- JOIN ROOM VIEW -->
+                <div id="menu-join" class="hidden">
+                    <h3 class="view-title">SALAS DISPONÍVEIS</h3>
+
+                    <!-- Room Code Input + Scan -->
+                    <div class="join-input-group">
+                        <input type="text" id="room-code" placeholder="CÓDIGO" maxlength="5">
+                        <button id="scan-btn" title="Ler QR Code">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 8V5a1 1 0 0 1 1-1h3" />
+                                <path d="M16 4h3a1 1 0 0 1 1 1v3" />
+                                <path d="M4 16v3a1 1 0 0 0 1 1h3" />
+                                <path d="M16 20h3a1 1 0 0 0 1-1v-3" />
+                                <line x1="4" y1="12" x2="20" y2="12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <button id="join-confirm-btn" style="margin-bottom: 1rem;">ENTRAR</button>
+
+                    <!-- List -->
+                    <div id="rooms-list-container" class="menu-card">
+                        <div id="rooms-list">
+                            <!-- Rooms injected here -->
+                        </div>
+                    </div>
+
+                    <button class="back-link-btn" id="back-to-main-from-join">VOLTAR</button>
                 </div>
             </div>
 
-            <div class="menu-divider">OU</div>
-
-            <div class="menu-card">
-                <div class="join-input-group">
-                    <input type="text" id="room-code" placeholder="ENTRE COM CÓDIGO" maxlength="5">
-                    <button id="scan-btn" title="Ler QR Code">
-                        <!-- Scanner Icon -->
-                        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor"
-                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <!-- Corners -->
-                            <path d="M4 8V5a1 1 0 0 1 1-1h3" />
-                            <path d="M16 4h3a1 1 0 0 1 1 1v3" />
-                            <path d="M4 16v3a1 1 0 0 0 1 1h3" />
-                            <path d="M16 20h3a1 1 0 0 0 1-1v-3" />
-                            <!-- Scan Line -->
-                            <line x1="4" y1="12" x2="20" y2="12" />
-                        </svg>
-                    </button>
-                </div>
-                <button id="join-btn">ENTRE NA SALA</button>
-                <div class="menu-footer">
-                    <a href="#" id="solo-btn">JOGUE SOZINHO</a>
-                </div>
-            </div>
             <div class="copyright">&copy; RENGAW - 2026</div>
         </div>
 
@@ -145,8 +203,40 @@
         </div>
     </div>
 
+    <div id="ranking-modal" class="hidden">
+        <button id="close-ranking" class="close-btn">X</button>
+        <div class="ranking-content">
+            <h2>TOP 10 - SOLO</h2>
+            <ul id="ranking-list" class="data-list">
+                <!-- Items will be injected here -->
+                <li>CARREGANDO...</li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="history-modal" class="hidden">
+        <button id="close-history" class="close-btn">X</button>
+        <div class="ranking-content">
+            <h2>HISTÓRICO</h2>
+            <ul id="history-list" class="data-list">
+                <!-- Items will be injected here -->
+                <li>CARREGANDO...</li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="new-record-modal" class="hidden">
+        <div class="modal-content celebration-card">
+            <h2>NOVO RECORDE!</h2>
+            <p class="record-score" id="new-record-value">0</p>
+            <p>PARABÉNS, <span id="record-player-name">JOGADOR</span>!</p>
+            <button id="close-record-btn">CONTINUAR</button>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="game.js"></script>
     <script>
